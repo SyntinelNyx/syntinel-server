@@ -1,11 +1,15 @@
 package router
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+
+	CustomMiddleware "github.com/SyntinelNyx/syntinel-server/middlewares"
+	"github.com/SyntinelNyx/syntinel-server/utils"
 )
 
 type Router struct {
@@ -25,10 +29,16 @@ func SetupRouter() *Router {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(60 * time.Second))
 
+	router.Use(CustomMiddleware.ZapLogger(logger))
+
 	r := Router{
 		router: router,
 		logger: logger,
 	}
+
+	r.router.Get("/coffee", func(w http.ResponseWriter, r *http.Request) {
+		utils.RespondWithError(w, http.StatusTeapot, "I'm a teapot")
+	})
 
 	return &r
 }
