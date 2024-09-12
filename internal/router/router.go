@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
-	CustomMiddleware "github.com/SyntinelNyx/syntinel-server/middlewares"
-	"github.com/SyntinelNyx/syntinel-server/utils"
+	Logger "github.com/SyntinelNyx/syntinel-server/internal/logger"
+	"github.com/SyntinelNyx/syntinel-server/internal/utils"
 )
 
 type Router struct {
@@ -29,7 +29,7 @@ func SetupRouter() *Router {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(60 * time.Second))
 
-	router.Use(CustomMiddleware.ZapLogger(logger))
+	router.Use(Logger.LoggerMiddleware(logger))
 
 	r := Router{
 		router: router,

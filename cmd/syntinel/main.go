@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/SyntinelNyx/syntinel-server/config"
-	"github.com/SyntinelNyx/syntinel-server/router"
+	"github.com/SyntinelNyx/syntinel-server/internal/config"
+	"github.com/SyntinelNyx/syntinel-server/internal/router"
 )
 
 func main() {
