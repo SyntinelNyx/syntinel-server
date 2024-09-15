@@ -1,4 +1,4 @@
-package logger
+package utils
 
 import (
 	"net/http"
@@ -13,6 +13,7 @@ func LoggerMiddleware(logger *zap.Logger) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
 			defer func() {
 				duration := time.Since(start)
 
