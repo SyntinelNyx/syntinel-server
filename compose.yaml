@@ -1,0 +1,12 @@
+name: syntinel-server
+services:
+  syntinel-server:
+    container_name: syntinel-server
+    image: syntinel-server:latest
+    build:
+      context: .
+    stdin_open: true
+    tty: true
+    ports:
+      - 8080:8080
+    restart: always
