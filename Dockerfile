@@ -8,7 +8,7 @@ RUN go mod download
 
 # Copy the entire application code and build the binary
 COPY . .
-RUN go build -o syntinel-server ./cmd/syntinel
+RUN go build -o syntinel-server ./cmd/syntinel-server
 
 # Release stage
 FROM alpine:latest AS prod
