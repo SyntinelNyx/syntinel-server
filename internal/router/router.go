@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-pg/pg/v10"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -14,11 +15,12 @@ import (
 
 type Router struct {
 	router      *chi.Mux
+	database    *pg.DB
 	logger      *zap.Logger
 	rateLimiter *utils.RateLimiter
 }
 
-func SetupRouter() *Router {
+func SetupRouter(db *pg.DB) *Router {
 	router := chi.NewRouter()
 
 	logger, _ := zap.NewProduction()
@@ -36,6 +38,7 @@ func SetupRouter() *Router {
 
 	r := Router{
 		router:      router,
+		database:    db,
 		logger:      logger,
 		rateLimiter: rl,
 	}

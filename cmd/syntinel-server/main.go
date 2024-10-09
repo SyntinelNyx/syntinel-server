@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
+	"github.com/SyntinelNyx/syntinel-server/internal/database"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
 )
 
@@ -18,7 +20,14 @@ func main() {
 	}
 	port := config.ConfigPort(flags)
 
-	r := router.SetupRouter()
+	db := database.InitDatabase()
+	ctx := context.Background()
+	if err := db.Ping(ctx); err != nil {
+		log.Fatalf("Failed to start database: %v", err)
+	}
+	defer db.Close()
+
+	r := router.SetupRouter(db)
 
 	slog.Info(fmt.Sprintf("Starting server on %s...", port))
 	if err := http.ListenAndServe(port, r.GetRouter()); err != nil {
