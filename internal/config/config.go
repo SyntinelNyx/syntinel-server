@@ -51,11 +51,11 @@ func ConfigPort(flags *Flags) string {
 	if flags.Port != 0 {
 		port = fmt.Sprintf(":%d", flags.Port)
 	} else {
-		if os.Getenv("PORT") == "" {
+		if os.Getenv("APP_PORT") == "" {
 			slog.Warn("No port specified, default port :80 used...")
 			return ":80"
 		}
-		port = fmt.Sprintf(":%s", os.Getenv("PORT"))
+		port = fmt.Sprintf(":%s", os.Getenv("APP_PORT"))
 	}
 	return port
 }

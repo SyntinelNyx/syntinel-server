@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -20,14 +19,13 @@ func main() {
 	}
 	port := config.ConfigPort(flags)
 
-	db := database.InitDatabase()
-	ctx := context.Background()
-	if err := db.Ping(ctx); err != nil {
+	queries, pool, err := database.InitDatabase()
+	if err != nil {
 		log.Fatalf("Failed to start database: %v", err)
 	}
-	defer db.Close()
+	defer pool.Close()
 
-	r := router.SetupRouter(db)
+	r := router.SetupRouter(queries)
 
 	slog.Info(fmt.Sprintf("Starting server on %s...", port))
 	if err := http.ListenAndServe(port, r.GetRouter()); err != nil {
