@@ -11,4 +11,6 @@ services:
       - 8080:8080
     environment:
       - DATABASE_URL=
+      - ECDSA_PUBLIC_KEY_PATH=
+      - ECDSA_PRIVATE_KEY_PATH=
     restart: always

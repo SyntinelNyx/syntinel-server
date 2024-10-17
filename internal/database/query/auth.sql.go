@@ -7,6 +7,8 @@ package query
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createRootAccount = `-- name: CreateRootAccount :one
@@ -26,6 +28,132 @@ type CreateRootAccountParams struct {
 
 func (q *Queries) CreateRootAccount(ctx context.Context, arg CreateRootAccountParams) (RootAccount, error) {
 	row := q.db.QueryRow(ctx, createRootAccount, arg.Email, arg.Username, arg.PasswordHash)
+	var i RootAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getIAMAccountByEmail = `-- name: GetIAMAccountByEmail :one
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts
+WHERE $1 = email
+`
+
+func (q *Queries) GetIAMAccountByEmail(ctx context.Context, email string) (IamAccount, error) {
+	row := q.db.QueryRow(ctx, getIAMAccountByEmail, email)
+	var i IamAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.RootAccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.AccountStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getIAMAccountById = `-- name: GetIAMAccountById :one
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts 
+WHERE $1 = account_id
+`
+
+func (q *Queries) GetIAMAccountById(ctx context.Context, accountID pgtype.UUID) (IamAccount, error) {
+	row := q.db.QueryRow(ctx, getIAMAccountById, accountID)
+	var i IamAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.RootAccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.AccountStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getIAMAccountByUsername = `-- name: GetIAMAccountByUsername :one
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts 
+WHERE $1 = username
+`
+
+func (q *Queries) GetIAMAccountByUsername(ctx context.Context, username string) (IamAccount, error) {
+	row := q.db.QueryRow(ctx, getIAMAccountByUsername, username)
+	var i IamAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.RootAccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.AccountStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getRootAccountByEmail = `-- name: GetRootAccountByEmail :one
+SELECT account_id, email, username, password_hash, created_at, updated_at, email_verified_at FROM root_accounts
+WHERE $1 = email
+`
+
+func (q *Queries) GetRootAccountByEmail(ctx context.Context, email string) (RootAccount, error) {
+	row := q.db.QueryRow(ctx, getRootAccountByEmail, email)
+	var i RootAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getRootAccountById = `-- name: GetRootAccountById :one
+SELECT account_id, email, username, password_hash, created_at, updated_at, email_verified_at FROM root_accounts 
+WHERE $1 = account_id
+`
+
+func (q *Queries) GetRootAccountById(ctx context.Context, accountID pgtype.UUID) (RootAccount, error) {
+	row := q.db.QueryRow(ctx, getRootAccountById, accountID)
+	var i RootAccount
+	err := row.Scan(
+		&i.AccountID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const getRootAccountByUsername = `-- name: GetRootAccountByUsername :one
+SELECT account_id, email, username, password_hash, created_at, updated_at, email_verified_at FROM root_accounts 
+WHERE $1 = username
+`
+
+func (q *Queries) GetRootAccountByUsername(ctx context.Context, username string) (RootAccount, error) {
+	row := q.db.QueryRow(ctx, getRootAccountByUsername, username)
 	var i RootAccount
 	err := row.Scan(
 		&i.AccountID,

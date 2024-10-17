@@ -1,6 +1,8 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE
   IF NOT EXISTS root_accounts (
-    account_id SERIAL PRIMARY KEY,
+    account_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
     email VARCHAR(255) NOT NULL UNIQUE,
     username VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
@@ -19,8 +21,8 @@ CREATE TABLE
 
 CREATE TABLE
   IF NOT EXISTS iam_accounts (
-    account_id SERIAL PRIMARY KEY,
-    root_account_id INTEGER NOT NULL,
+    account_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    root_account_id UUID NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     username VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
@@ -41,7 +43,7 @@ CREATE TABLE
 
 CREATE TABLE
   IF NOT EXISTS permissions (
-    permission_id SERIAL PRIMARY KEY,
+    permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
     is_administrator BOOLEAN DEFAULT FALSE,
     view_assets BOOLEAN DEFAULT FALSE,
     manage_assets BOOLEAN DEFAULT FALSE,
@@ -54,8 +56,8 @@ CREATE TABLE
 
 CREATE TABLE
   IF NOT EXISTS iam_account_permissions (
-    iam_account_id INTEGER NOT NULL,
-    permission_id INTEGER NOT NULL,
+    iam_account_id UUID NOT NULL,
+    permission_id UUID NOT NULL,
     PRIMARY KEY (iam_account_id, permission_id),
     FOREIGN KEY (iam_account_id) REFERENCES iam_accounts (account_id),
     FOREIGN KEY (permission_id) REFERENCES permissions (permission_id)

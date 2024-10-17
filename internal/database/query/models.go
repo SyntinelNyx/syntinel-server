@@ -9,8 +9,8 @@ import (
 )
 
 type IamAccount struct {
-	AccountID       int32
-	RootAccountID   int32
+	AccountID       pgtype.UUID
+	RootAccountID   pgtype.UUID
 	Email           string
 	Username        string
 	PasswordHash    string
@@ -21,12 +21,12 @@ type IamAccount struct {
 }
 
 type IamAccountPermission struct {
-	IamAccountID int32
-	PermissionID int32
+	IamAccountID pgtype.UUID
+	PermissionID pgtype.UUID
 }
 
 type Permission struct {
-	PermissionID    int32
+	PermissionID    pgtype.UUID
 	IsAdministrator pgtype.Bool
 	ViewAssets      pgtype.Bool
 	ManageAssets    pgtype.Bool
@@ -38,7 +38,7 @@ type Permission struct {
 }
 
 type RootAccount struct {
-	AccountID       int32
+	AccountID       pgtype.UUID
 	Email           string
 	Username        string
 	PasswordHash    string

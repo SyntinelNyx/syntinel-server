@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/utils"
 )
@@ -43,10 +44,34 @@ func SetupRouter(q *query.Queries) *Router {
 		rateLimiter: rl,
 	}
 
-	r.router.Group(func(subRouter chi.Router) {
-		subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 30))
-		subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
-			utils.RespondWithError(w, http.StatusTeapot, "I'm a teapot")
+	r.router.Route("/v1/api", func(apiRouter chi.Router) {
+		apiRouter.Group(func(subRouter chi.Router) {
+			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 30))
+
+			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
+				utils.RespondWithError(w, http.StatusTeapot, "I'm a teapot")
+			})
+		})
+
+		apiRouter.Group(func(subRouter chi.Router) {
+			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+
+			authHandler := auth.NewHandler(r.queries)
+
+			subRouter.Post("/auth/login", authHandler.Login)
+			subRouter.Post("/auth/register", authHandler.Register)
+		})
+
+		apiRouter.Group(func(subRouter chi.Router) {
+			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+
+			authHandler := auth.NewHandler(r.queries)
+			subRouter.Use(authHandler.JWTMiddleware)
+
+			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
+				utils.RespondWithJSON(w, http.StatusOK,
+					map[string]string{"message": auth.GetClaims(req.Context()).AccountID})
+			})
 		})
 	})
 
