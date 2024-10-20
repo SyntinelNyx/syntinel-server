@@ -21,30 +21,30 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var request RegisterRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request")
+		utils.RespondWithError(w, r, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
 
 	if request.Email == "" || request.Username == "" || request.Password == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Fields cannot be left empty")
+		utils.RespondWithError(w, r, http.StatusBadRequest, "Fields cannot be left empty", fmt.Errorf("request field left empty"))
 		return
 	}
 
 	_, err := h.queries.GetRootAccountByEmail(context.Background(), request.Email)
 	if err == nil {
-		utils.RespondWithError(w, http.StatusConflict, "Email already exists")
+		utils.RespondWithError(w, r, http.StatusConflict, "Email already exists", err)
 		return
 	}
 
 	_, err = h.queries.GetRootAccountByUsername(context.Background(), request.Username)
 	if err == nil {
-		utils.RespondWithError(w, http.StatusConflict, "Username already exists")
+		utils.RespondWithError(w, r, http.StatusConflict, "Username already exists", err)
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to hash password")
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Failed to hash password", err)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			Username:     request.Username,
 			PasswordHash: string(hashedPassword)})
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to register user")
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Failed to register user", err)
 		return
 	}
 

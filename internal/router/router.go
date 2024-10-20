@@ -49,7 +49,7 @@ func SetupRouter(q *query.Queries) *Router {
 			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 30))
 
 			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
-				utils.RespondWithError(w, http.StatusTeapot, "I'm a teapot")
+				utils.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm a teapot!"})
 			})
 		})
 
