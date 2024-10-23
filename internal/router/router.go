@@ -67,6 +67,7 @@ func SetupRouter(q *query.Queries) *Router {
 
 			authHandler := auth.NewHandler(r.queries)
 			subRouter.Use(authHandler.JWTMiddleware)
+			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
 				utils.RespondWithJSON(w, http.StatusOK,
