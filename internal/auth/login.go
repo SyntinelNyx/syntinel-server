@@ -87,7 +87,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    accessToken,
 		Path:     "/",
 		MaxAge:   int(24 * time.Hour / time.Second),
-		Secure:   false,
+		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
@@ -97,7 +97,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    csrfToken,
 		Path:     "/",
 		MaxAge:   int(24 * time.Hour / time.Second),
-		Secure:   false,
+		Secure:   true,
 		HttpOnly: false,
 		SameSite: http.SameSiteStrictMode,
 	})

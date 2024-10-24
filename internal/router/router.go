@@ -26,7 +26,7 @@ func SetupRouter(q *query.Queries) *Router {
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{"https://localhost", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
