@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
@@ -23,7 +24,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var request LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.RespondWithError(w, r, http.StatusBadRequest, "Invalid request", err)
+		utils.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
 		return
 	}
 
@@ -35,12 +36,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	} else if request.AccountType == "iam" {
 		user, err = h.queries.GetIAMAccountByUsername(context.Background(), request.Username)
 	} else {
-		utils.RespondWithError(w, r, http.StatusNotFound, "Invalid account type", fmt.Errorf("invalid account type in request"))
+		utils.RespondWithError(w, r, http.StatusNotFound, "Invalid Account Type", fmt.Errorf("invalid account type in request"))
 		return
 	}
 
 	if err != nil {
-		utils.RespondWithError(w, r, http.StatusNotFound, "Username doesn't exist", err)
+		utils.RespondWithError(w, r, http.StatusNotFound, "Username Doesn't Exist", err)
 		return
 	}
 
@@ -54,33 +55,52 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		passwordHash = iamUser.PasswordHash
 		accountID = iamUser.AccountID
 	} else {
-		utils.RespondWithError(w, r, http.StatusInternalServerError, "Unexpected account type", fmt.Errorf("unexpected account type"))
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Unexpected Account Type", fmt.Errorf("unexpected account type"))
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(request.Password)); err != nil {
-		utils.RespondWithError(w, r, http.StatusUnauthorized, "Invalid credentials", err)
+		utils.RespondWithError(w, r, http.StatusUnauthorized, "Invalid Credentials", err)
 		return
 	}
 
 	accountId, err := accountID.Value()
 	if err != nil {
-		utils.RespondWithError(w, r, http.StatusInternalServerError, "Failed to parse UUID", err)
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Failed To Parse UUID", err)
 		return
 	}
 
 	accessToken, err := generateAccessToken(accountId, request.AccountType)
 	if err != nil {
-		utils.RespondWithError(w, r, http.StatusInternalServerError, "Could not generate access token", err)
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Could Not Generate Access Token", err)
 		return
 	}
 
 	csrfToken, err := generateCSRFToken()
 	if err != nil {
-		utils.RespondWithError(w, r, http.StatusInternalServerError, "Could not generate CSRF token", err)
+		utils.RespondWithError(w, r, http.StatusInternalServerError, "Could Not Generate CSRF Token", err)
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusOK,
-		map[string]string{"access_token": accessToken, "csrf_token": csrfToken, "token_type": "bearer"})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   int(24 * time.Hour / time.Second),
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Path:     "/",
+		MaxAge:   int(24 * time.Hour / time.Second),
+		Secure:   false,
+		HttpOnly: false,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Login Successful"})
 }

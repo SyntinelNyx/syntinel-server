@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -51,7 +52,7 @@ func (rl *RateLimiter) RateLimitMiddleware(rateLimit rate.Limit, burst int) func
 			limiter := rl.GetLimiter(r.URL.Path, ip, rateLimit, burst)
 
 			if !limiter.Allow() {
-				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				RespondWithError(w, r, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests), fmt.Errorf("too many requests"))
 				return
 			}
 
