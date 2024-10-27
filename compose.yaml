@@ -7,12 +7,40 @@ services:
       context: .
     stdin_open: true
     tty: true
-    ports:
-      - 8080:8080
     environment:
-      - DATABASE_URL=
+      - APP_ENV=
+      - APP_PORT=
+      - TLS_CERT_PATH=
+      - TLS_KEY_PATH=
       - REDIS_URL=
+      - DATABASE_URL=
       - CSRF_SECRET=
       - ECDSA_PUBLIC_KEY_PATH=
       - ECDSA_PRIVATE_KEY_PATH=
+    ports:
+      - 8080:8080
+    volumes:
+      - ~/syntinel-server/data:/app/data
+    restart: always
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - ~/syntinel-server/redis_data:/data
+    restart: always
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=
+      - POSTGRES_PASSWORD=
+      - POSTGRES_DB=
+    ports:
+      - 5432:5432
+    volumes:
+      - ~/syntinel-server/postgres_data:/var/lib/postgresql/data
     restart: always

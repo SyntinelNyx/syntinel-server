@@ -13,10 +13,14 @@ RUN go build -o syntinel-server ./cmd/syntinel-server
 # Release stage
 FROM alpine:latest AS prod
 
+# Set /app as the working directory
+WORKDIR /app
+
 # Copy the built binary from the builder stage
-COPY --from=builder /app/syntinel-server /
+COPY --from=builder /app/syntinel-server .
 
 # Expose the port the application will listen on
 EXPOSE 8080
 
-CMD ["/syntinel-server", "-e", "production", "-p", "8080"]
+# Start the application in the /app directory
+CMD ["./syntinel-server", "-e", "production", "-p", "8080"]

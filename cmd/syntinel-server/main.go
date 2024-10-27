@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"net/http"
+	"os"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
@@ -25,10 +25,11 @@ func main() {
 	}
 	defer pool.Close()
 
-	r := router.SetupRouter(queries)
+	router := router.SetupRouter(queries)
+	server := config.SetupServer(port, router)
 
-	slog.Info(fmt.Sprintf("Starting server on %s...", port))
-	if err := http.ListenAndServe(port, r.GetRouter()); err != nil {
+	slog.Info(fmt.Sprintf("Starting server on %s with TLS...", port))
+	if err := server.ListenAndServeTLS(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH")); err != nil {
 		log.Fatalf("Could not start server: %v\n", err)
 	}
 }
