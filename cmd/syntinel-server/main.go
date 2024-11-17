@@ -26,10 +26,17 @@ func main() {
 	defer pool.Close()
 
 	router := router.SetupRouter(queries)
-	server := config.SetupServer(port, router)
+	server := config.SetupServer(port, router, flags)
 
-	slog.Info(fmt.Sprintf("Starting server on %s with TLS...", port))
-	if err := server.ListenAndServeTLS(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH")); err != nil {
-		log.Fatalf("Could not start server: %v\n", err)
+	if flags.Environment == "development" {
+		slog.Info(fmt.Sprintf("Starting server on %s with TLS...", port))
+		if err := server.ListenAndServeTLS(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH")); err != nil {
+			log.Fatalf("Could not start server: %v\n", err)
+		}
+	} else if flags.Environment == "production" {
+		slog.Info(fmt.Sprintf("Starting server on %s...", port))
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatalf("Could not start server: %v\n", err)
+		}
 	}
 }
