@@ -19,6 +19,7 @@ func main() {
 	}
 	port := config.ConfigPort(flags)
 
+	database.RunMigration()
 	queries, pool, err := database.InitDatabase()
 	if err != nil {
 		log.Fatalf("Failed to start database: %v", err)

@@ -1,5 +1,5 @@
 env ?= development
-port ?= 0
+port ?= 8080
 
 syntinel-server:
 	@go build ./cmd/syntinel-server

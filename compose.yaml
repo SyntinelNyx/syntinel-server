@@ -10,8 +10,6 @@ services:
     environment:
       - APP_ENV=
       - APP_PORT=
-      - TLS_CERT_PATH=
-      - TLS_KEY_PATH=
       - REDIS_URL=
       - DATABASE_URL=
       - CSRF_SECRET=
@@ -20,7 +18,7 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ~/syntinel-server/data:/app/data
+      - ~/syntinel-server/:/app/
     restart: always
 
   redis:
