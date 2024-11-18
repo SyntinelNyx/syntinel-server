@@ -22,11 +22,11 @@ type Router struct {
 	rateLimiter *utils.RateLimiter
 }
 
-func SetupRouter(q *query.Queries) *Router {
+func SetupRouter(q *query.Queries, origins []string) *Router {
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://localhost"},
+		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,

@@ -25,7 +25,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	router := router.SetupRouter(queries)
+	router := router.SetupRouter(queries, config.AllowedOrigins)
 	server := config.SetupServer(port, router, flags)
 
 	if flags.Environment == "development" {

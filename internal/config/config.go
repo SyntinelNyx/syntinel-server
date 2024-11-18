@@ -11,11 +11,27 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
 	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
+
+var AllowedOrigins []string
 
 type Flags struct {
 	Environment string
 	Port        int
+}
+
+func init() {
+	viper.SetConfigName("config.yaml")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalln("Failed to read configuration file")
+	}
+
+	AllowedOrigins = viper.GetStringSlice("cors.allowed_origins")
+	slog.Info("CORS allowed origins loaded:", "origins", AllowedOrigins)
 }
 
 func LoadEnv() {
