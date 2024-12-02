@@ -1,0 +1,16 @@
+syntax = "proto3";
+package gRPC;
+
+option go_package = "github.com/SyntinelNyx/syntinel-server/internal/gRPC_server/hw_info";
+
+service hw_info {
+    rpc GetInfo (InfoRequest) returns (InfoReply);
+}
+
+message InfoReply {
+    string message = 1;
+}
+
+message InfoRequest {
+    string name = 1;
+}

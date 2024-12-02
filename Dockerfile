@@ -25,4 +25,14 @@ COPY --from=builder /app/internal/database/postgresql/schema.sql ./postgresql/sc
 EXPOSE 8080
 
 # Start the application in the /app directory
-CMD ["./syntinel-server", "-e", "production", "-p", "8080"]
+CMD ["./syntinel-server", "-e", "production", "-p", "8080"]APP_ENV=production
+APP_PORT=8080
+TLS_CERT_PATH=/path/to/server.crt
+TLS_KEY_PATH=/path/to/server.key
+
+REDIS_URL=localhost:6379
+DATABASE_URL=postgres://username:password@host:port/database_name
+
+CSRF_SECRET=super_secure_secret
+ECDSA_PUBLIC_KEY_PATH=/path/to/ecdsa_public.pem
+ECDSA_PRIVATE_KEY_PATH=/path/to/ecdsa_private.pem
