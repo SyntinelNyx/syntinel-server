@@ -4,7 +4,7 @@ package grpc;
 option go_package = "github.com/SyntinelNyx/syntinel-server/internal/proto";
 
 service HardwareService {
-  rpc ReceiveHardwareInfo (HardwareInfo) returns (Response);
+  rpc SendHardwareInfo (HardwareInfo) returns (Response);
 }
 
 message HardwareInfo {

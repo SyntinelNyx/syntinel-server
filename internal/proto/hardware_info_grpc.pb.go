@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	HardwareService_ReceiveHardwareInfo_FullMethodName = "/grpc.HardwareService/ReceiveHardwareInfo"
+	HardwareService_SendHardwareInfo_FullMethodName = "/grpc.HardwareService/SendHardwareInfo"
 )
 
 // HardwareServiceClient is the client API for HardwareService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HardwareServiceClient interface {
-	ReceiveHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*Response, error)
+	SendHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*Response, error)
 }
 
 type hardwareServiceClient struct {
@@ -37,9 +37,9 @@ func NewHardwareServiceClient(cc grpc.ClientConnInterface) HardwareServiceClient
 	return &hardwareServiceClient{cc}
 }
 
-func (c *hardwareServiceClient) ReceiveHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*Response, error) {
+func (c *hardwareServiceClient) SendHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
-	err := c.cc.Invoke(ctx, HardwareService_ReceiveHardwareInfo_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, HardwareService_SendHardwareInfo_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *hardwareServiceClient) ReceiveHardwareInfo(ctx context.Context, in *Har
 // All implementations must embed UnimplementedHardwareServiceServer
 // for forward compatibility
 type HardwareServiceServer interface {
-	ReceiveHardwareInfo(context.Context, *HardwareInfo) (*Response, error)
+	SendHardwareInfo(context.Context, *HardwareInfo) (*Response, error)
 	mustEmbedUnimplementedHardwareServiceServer()
 }
 
@@ -58,8 +58,8 @@ type HardwareServiceServer interface {
 type UnimplementedHardwareServiceServer struct {
 }
 
-func (UnimplementedHardwareServiceServer) ReceiveHardwareInfo(context.Context, *HardwareInfo) (*Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReceiveHardwareInfo not implemented")
+func (UnimplementedHardwareServiceServer) SendHardwareInfo(context.Context, *HardwareInfo) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendHardwareInfo not implemented")
 }
 func (UnimplementedHardwareServiceServer) mustEmbedUnimplementedHardwareServiceServer() {}
 
@@ -74,20 +74,20 @@ func RegisterHardwareServiceServer(s grpc.ServiceRegistrar, srv HardwareServiceS
 	s.RegisterService(&HardwareService_ServiceDesc, srv)
 }
 
-func _HardwareService_ReceiveHardwareInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _HardwareService_SendHardwareInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HardwareInfo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(HardwareServiceServer).ReceiveHardwareInfo(ctx, in)
+		return srv.(HardwareServiceServer).SendHardwareInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: HardwareService_ReceiveHardwareInfo_FullMethodName,
+		FullMethod: HardwareService_SendHardwareInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HardwareServiceServer).ReceiveHardwareInfo(ctx, req.(*HardwareInfo))
+		return srv.(HardwareServiceServer).SendHardwareInfo(ctx, req.(*HardwareInfo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -100,8 +100,8 @@ var HardwareService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HardwareServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReceiveHardwareInfo",
-			Handler:    _HardwareService_ReceiveHardwareInfo_Handler,
+			MethodName: "SendHardwareInfo",
+			Handler:    _HardwareService_SendHardwareInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -14,7 +14,7 @@ type server struct {
 	pb.UnimplementedHardwareServiceServer
 }
 
-func (s *server) ReceiveHardwareInfo(ctx context.Context, req *pb.HardwareInfo) (*pb.Response, error) {
+func (s *server) SendHardwareInfo(ctx context.Context, req *pb.HardwareInfo) (*pb.Response, error) {
 	log.Printf("Received hardware info: %s", req.JsonData)
 	return &pb.Response{Message: "Hardware info received successfully"}, nil
 }
