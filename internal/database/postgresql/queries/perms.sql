@@ -18,12 +18,12 @@ WHERE
 
 -- name: GetUserPermissions :one
 SELECT p.* FROM iam_user_permissions iup
-JOIN
+JOIN 
     permissions p ON iup.permission_id = p.permission_id
-JOIN
+JOIN 
     iam_accounts ia ON iup.iam_account_id = ia.account_id
-WHERE
-    ia.username = $1;
+WHERE 
+    ia.account_id = $1;
 
 -- name: UpdateUserPermissions :exec
 WITH updated_permission AS (

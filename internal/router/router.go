@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
+	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/utils"
 )
@@ -69,6 +70,14 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Post("/auth/login", authHandler.Login)
 			subRouter.Post("/auth/register", authHandler.Register)
+		})
+
+		apiRouter.Group(func(subRouter chi.Router) {
+			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+
+			roleHandler := role.NewHandler(r.queries)
+
+			subRouter.Post("/role/create", roleHandler.Create)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {

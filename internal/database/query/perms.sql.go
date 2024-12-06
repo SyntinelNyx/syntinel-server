@@ -104,16 +104,16 @@ func (q *Queries) GetRolePermissions(ctx context.Context, roleName string) (Perm
 
 const getUserPermissions = `-- name: GetUserPermissions :one
 SELECT p.permission_id, p.is_administrator, p.view_assets, p.manage_assets, p.view_modules, p.create_modules, p.manage_modules, p.view_scans, p.start_scans FROM iam_user_permissions iup
-JOIN
+JOIN 
     permissions p ON iup.permission_id = p.permission_id
-JOIN
+JOIN 
     iam_accounts ia ON iup.iam_account_id = ia.account_id
-WHERE
-    ia.username = $1
+WHERE 
+    ia.account_id = $1
 `
 
-func (q *Queries) GetUserPermissions(ctx context.Context, username string) (Permission, error) {
-	row := q.db.QueryRow(ctx, getUserPermissions, username)
+func (q *Queries) GetUserPermissions(ctx context.Context, accountID pgtype.UUID) (Permission, error) {
+	row := q.db.QueryRow(ctx, getUserPermissions, accountID)
 	var i Permission
 	err := row.Scan(
 		&i.PermissionID,
