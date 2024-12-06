@@ -55,7 +55,30 @@ CREATE TABLE
   );
 
 CREATE TABLE
-  IF NOT EXISTS iam_account_permissions (
+  IF NOT EXISTS roles(
+    role_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_name VARCHAR(255) NOT NULL UNIQUE
+  );
+
+CREATE TABLE
+  IF NOT EXISTS roles_permissions(
+    role_id UUID NOT NULL,
+    permission_id UUID NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
+    FOREIGN KEY (role_id) REFERENCES roles (role_id),
+    FOREIGN KEY (permission_id) REFERENCES permissions (permission_id)
+  );
+
+CREATE TABLE IF NOT EXISTS iam_user_roles (
+    iam_account_id UUID NOT NULL,
+    role_id UUID NOT NULL,
+    PRIMARY KEY (iam_account_id, role_id),
+    FOREIGN KEY (iam_account_id) REFERENCES iam_accounts (account_id),
+    FOREIGN KEY (role_id) REFERENCES roles (role_id)
+  );
+
+CREATE TABLE
+  IF NOT EXISTS iam_user_permissions (
     iam_account_id UUID NOT NULL,
     permission_id UUID NOT NULL,
     PRIMARY KEY (iam_account_id, permission_id),

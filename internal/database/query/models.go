@@ -20,9 +20,14 @@ type IamAccount struct {
 	EmailVerifiedAt pgtype.Int8
 }
 
-type IamAccountPermission struct {
+type IamUserPermission struct {
 	IamAccountID pgtype.UUID
 	PermissionID pgtype.UUID
+}
+
+type IamUserRole struct {
+	IamAccountID pgtype.UUID
+	RoleID       pgtype.UUID
 }
 
 type Permission struct {
@@ -35,6 +40,16 @@ type Permission struct {
 	ManageModules   pgtype.Bool
 	ViewScans       pgtype.Bool
 	StartScans      pgtype.Bool
+}
+
+type Role struct {
+	RoleID   pgtype.UUID
+	RoleName string
+}
+
+type RolesPermission struct {
+	RoleID       pgtype.UUID
+	PermissionID pgtype.UUID
 }
 
 type RootAccount struct {
