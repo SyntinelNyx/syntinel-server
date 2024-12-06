@@ -12,3 +12,7 @@
 
 Caddyfile
 config.yaml
+
+redis_data
+
+syntinel-server
