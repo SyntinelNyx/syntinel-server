@@ -1,3 +1,6 @@
+-- name: GetAllRoles :many
+SELECT role_name FROM roles;
+
 -- name: GetRolePermissions :one
 SELECT p.* FROM roles r
 JOIN

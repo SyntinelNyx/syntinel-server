@@ -75,6 +75,30 @@ func (q *Queries) AssignRoleToUser(ctx context.Context, arg AssignRoleToUserPara
 	return err
 }
 
+const getAllRoles = `-- name: GetAllRoles :many
+SELECT role_name FROM roles
+`
+
+func (q *Queries) GetAllRoles(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getAllRoles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var role_name string
+		if err := rows.Scan(&role_name); err != nil {
+			return nil, err
+		}
+		items = append(items, role_name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRolePermissions = `-- name: GetRolePermissions :one
 SELECT p.permission_id, p.is_administrator, p.view_assets, p.manage_assets, p.view_modules, p.create_modules, p.manage_modules, p.view_scans, p.start_scans FROM roles r
 JOIN

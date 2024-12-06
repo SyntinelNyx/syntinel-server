@@ -77,6 +77,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			roleHandler := role.NewHandler(r.queries)
 
+			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 		})
 
