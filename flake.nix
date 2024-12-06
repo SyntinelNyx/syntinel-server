@@ -34,6 +34,11 @@
             
             # type-safe sql generator
             sqlc
+
+            # protobuf
+            protobuf_27
+            protoc-gen-go
+            protoc-gen-go-grpc
           ];
         };
       });

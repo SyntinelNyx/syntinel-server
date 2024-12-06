@@ -1,0 +1,16 @@
+syntax = "proto3";
+package grpc;
+
+option go_package = "github.com/SyntinelNyx/syntinel-server/internal/proto";
+
+service HardwareService {
+  rpc ReceiveHardwareInfo (HardwareInfo) returns (Response);
+}
+
+message HardwareInfo {
+  string json_data = 1; // The JSON string containing hardware info
+}
+
+message Response {
+  string message = 1; // Response message from the server
+}
