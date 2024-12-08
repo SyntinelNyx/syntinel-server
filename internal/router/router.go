@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
+	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/utils"
 )
@@ -69,6 +70,24 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Post("/auth/login", authHandler.Login)
 			subRouter.Post("/auth/register", authHandler.Register)
+		})
+
+		apiRouter.Group(func(subRouter chi.Router) {
+			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+
+			roleHandler := role.NewHandler(r.queries)
+			authHandler := auth.NewHandler(r.queries)
+			subRouter.Use(authHandler.JWTMiddleware)
+			subRouter.Use(authHandler.CSRFMiddleware)
+
+			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
+				account := auth.GetClaims(req.Context())
+				utils.RespondWithJSON(w, http.StatusOK,
+					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
+			})
+
+			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Post("/role/create", roleHandler.Create)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
