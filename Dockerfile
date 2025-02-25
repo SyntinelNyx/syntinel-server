@@ -10,22 +10,24 @@ RUN go mod download
 COPY . .
 RUN go build -o syntinel-server ./cmd/syntinel-server
 
-RUN apk add --no-cache openssl
-RUN ./setup.sh
-
 # Release stage
 FROM alpine:latest AS prod
 
 # Set /app as the working directory
 WORKDIR /app
 
+RUN apk add --no-cache openssl
+
 # Copy the built binary from the builder stage
+COPY --from=builder /app/setup.sh ./setup.sh
+COPY --from=builder /app/config.yaml ./config.yaml
 COPY --from=builder /app/syntinel-server ./syntinel-server
 COPY --from=builder /app/internal/database/postgresql/schema.sql ./postgresql/schema.sql
-COPY --from=builder /app/data/ ./data/
+
+RUN chmod +x ./setup.sh
 
 # Expose the port the application will listen on
 EXPOSE 8080
 
 # Start the application in the /app directory
-CMD ["./syntinel-server", "-e", "production", "-p", "8080"]
+CMD ["sh", "-c", "./setup.sh && ./syntinel-server -e production -p 8080"]

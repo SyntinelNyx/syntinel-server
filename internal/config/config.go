@@ -62,7 +62,7 @@ func SetupEnv(flags *Flags) error {
 	}
 
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("./data")
+	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalln("Failed to read configuration file")
