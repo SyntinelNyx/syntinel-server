@@ -1,3 +1,0 @@
-cors:
-  allowed_origins:
-    - "https://localhost"

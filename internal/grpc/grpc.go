@@ -5,8 +5,8 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"os"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/data"
 	pb "github.com/SyntinelNyx/syntinel-server/internal/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -27,8 +27,7 @@ func StartServer() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Create tls based credential
-	creds, err := credentials.NewServerTLSFromFile(data.Path("x509/server_cert.pem"), data.Path("x509/server_key.pem"))
+	creds, err := credentials.NewServerTLSFromFile(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
 	if err != nil {
 		log.Fatalf("failed to create credentials: %v", err)
 	}

@@ -9,6 +9,7 @@ RUN go mod download
 # Copy the entire application code and build the binary
 COPY . .
 RUN go build -o syntinel-server ./cmd/syntinel-server
+RUN ./setup.sh
 
 # Release stage
 FROM alpine:latest AS prod
@@ -18,8 +19,8 @@ WORKDIR /app
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/syntinel-server ./syntinel-server
-COPY --from=builder /app/config.example.yaml ./config.yaml
 COPY --from=builder /app/internal/database/postgresql/schema.sql ./postgresql/schema.sql
+COPY --from=builder /app/data/ ./data/
 
 # Expose the port the application will listen on
 EXPOSE 8080

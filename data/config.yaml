@@ -1,0 +1,4 @@
+cors:
+  allowed_origins:
+    - "https://syntinel.dev"
+    - "https://www.syntinel.dev"

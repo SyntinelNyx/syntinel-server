@@ -10,9 +10,7 @@
 *.key
 *.pem
 
-Caddyfile
-config.yaml
-
 redis_data
+*.rdb
 
 syntinel-server

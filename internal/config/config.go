@@ -19,23 +19,14 @@ var AllowedOrigins []string
 type Flags struct {
 	Environment string
 	Port        int
+	EnvFile     string
 }
 
 func init() {
-	viper.SetConfigName("config.yaml")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Failed to read configuration file")
-	}
-
-	AllowedOrigins = viper.GetStringSlice("cors.allowed_origins")
-	slog.Info("CORS allowed origins loaded:", "origins", AllowedOrigins)
 }
 
-func LoadEnv() {
-	if err := godotenv.Load(); err != nil {
+func LoadEnv(filePath string) {
+	if err := godotenv.Load(filePath); err != nil {
 		log.Fatalln("Error loading .env file")
 	}
 }
@@ -43,25 +34,43 @@ func LoadEnv() {
 func DeclareFlags() *Flags {
 	env := flag.String("e", "development", "Set the environment ( development | production )")
 	port := flag.Int("p", 0, "Set the port that will be used")
+	envFile := flag.String("ef", "", "Set the imported env file")
 
 	flag.Parse()
 
 	return &Flags{
 		Environment: *env,
 		Port:        *port,
+		EnvFile:     *envFile,
 	}
 }
 
 func SetupEnv(flags *Flags) error {
 	switch flags.Environment {
 	case "development":
-		LoadEnv()
+		LoadEnv(".env")
+		viper.SetConfigName("config.dev.yaml")
 		slog.Info("Running in development mode...")
 	case "production":
+		if flags.EnvFile != "" {
+			LoadEnv(flags.EnvFile)
+		}
+		viper.SetConfigName("config.yaml")
 		slog.Info("Running in production mode...")
 	default:
 		return fmt.Errorf("unknown environment: %s", flags.Environment)
 	}
+
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./data")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalln("Failed to read configuration file")
+	}
+
+	AllowedOrigins = viper.GetStringSlice("cors.allowed_origins")
+	slog.Info("CORS allowed origins loaded:", "origins", AllowedOrigins)
+
 	return nil
 }
 
