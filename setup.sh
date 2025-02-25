@@ -50,6 +50,3 @@ openssl ec -in data/ecdsa_private.pem -pubout -out data/ecdsa_public.pem
 
 # Clean up CSR file.
 rm data/server_csr.pem
-
-make proto
-

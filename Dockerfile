@@ -9,6 +9,8 @@ RUN go mod download
 # Copy the entire application code and build the binary
 COPY . .
 RUN go build -o syntinel-server ./cmd/syntinel-server
+
+RUN apk add --no-cache openssl
 RUN ./setup.sh
 
 # Release stage
