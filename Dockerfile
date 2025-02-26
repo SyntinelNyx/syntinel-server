@@ -20,6 +20,7 @@ RUN apk add --no-cache openssl
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/setup.sh ./setup.sh
+COPY --from=builder /app/openssl.cnf ./openssl.cnf
 COPY --from=builder /app/config.yaml ./config.yaml
 COPY --from=builder /app/syntinel-server ./syntinel-server
 COPY --from=builder /app/internal/database/postgresql/schema.sql ./postgresql/schema.sql
