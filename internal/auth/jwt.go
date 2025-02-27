@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/utils"
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
 type claimsKeyType struct{}
@@ -118,20 +118,20 @@ func (h *Handler) JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("access_token")
 		if err != nil {
-			utils.RespondWithError(w, r, http.StatusUnauthorized, "Missing Access Token", err)
+			response.RespondWithError(w, r, http.StatusUnauthorized, "Missing Access Token", err)
 			return
 		}
 		tokenString := cookie.Value
 
 		claims, err := validateAccessToken(tokenString)
 		if err != nil {
-			utils.RespondWithError(w, r, http.StatusUnauthorized, "Invalid Or Expired Access Token", err)
+			response.RespondWithError(w, r, http.StatusUnauthorized, "Invalid Or Expired Access Token", err)
 			return
 		}
 
 		val, err := h.redisClient.Get(tokenString).Result()
 		if err == nil && val == "invalid" {
-			utils.RespondWithError(w, r, http.StatusUnauthorized, "Invalid Access Token", fmt.Errorf("invalid access token"))
+			response.RespondWithError(w, r, http.StatusUnauthorized, "Invalid Access Token", fmt.Errorf("invalid access token"))
 			return
 		}
 
@@ -145,13 +145,13 @@ func (h *Handler) CSRFMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		csrfHeader := r.Header.Get("X-CSRF-Token")
 		if csrfHeader == "" {
-			utils.RespondWithError(w, r, http.StatusForbidden, "Missing CSRF Token", fmt.Errorf("missing csrf token"))
+			response.RespondWithError(w, r, http.StatusForbidden, "Missing CSRF Token", fmt.Errorf("missing csrf token"))
 			return
 		}
 
 		csrfCookie, err := r.Cookie("csrf_token")
 		if err != nil || csrfCookie.Value != csrfHeader {
-			utils.RespondWithError(w, r, http.StatusForbidden, "Mismatched CSRF Token", fmt.Errorf("missing or mismatched csrf token"))
+			response.RespondWithError(w, r, http.StatusForbidden, "Mismatched CSRF Token", fmt.Errorf("missing or mismatched csrf token"))
 			return
 		}
 
@@ -162,7 +162,7 @@ func (h *Handler) CSRFMiddleware(next http.Handler) http.Handler {
 			return CSRFSecret, nil
 		})
 		if err != nil {
-			utils.RespondWithError(w, r, http.StatusForbidden, "Invalid CSRF Token", err)
+			response.RespondWithError(w, r, http.StatusForbidden, "Invalid CSRF Token", err)
 			return
 		}
 

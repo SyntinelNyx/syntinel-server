@@ -1,9 +1,26 @@
-package utils
+package response
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 )
+
+type errorKeyType struct{}
+
+var errorContextKey = errorKeyType{}
+
+func SetError(r *http.Request, err error) {
+	ctx := context.WithValue(r.Context(), errorContextKey, err)
+	*r = *r.WithContext(ctx)
+}
+
+func GetError(r *http.Request) error {
+	if err, ok := r.Context().Value(errorContextKey).(error); ok {
+		return err
+	}
+	return nil
+}
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)

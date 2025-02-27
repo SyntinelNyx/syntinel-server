@@ -11,16 +11,18 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
-	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
-	"github.com/SyntinelNyx/syntinel-server/internal/utils"
+	"github.com/SyntinelNyx/syntinel-server/internal/limiter"
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
+	"github.com/SyntinelNyx/syntinel-server/internal/role"
 )
 
 type Router struct {
 	router      *chi.Mux
 	queries     *query.Queries
 	logger      *zap.Logger
-	rateLimiter *utils.RateLimiter
+	rateLimiter *limiter.RateLimiter
 }
 
 func SetupRouter(q *query.Queries, origins []string) *Router {
@@ -34,10 +36,10 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		MaxAge:           300,
 	}))
 
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
+	zlogger, _ := zap.NewProduction()
+	defer zlogger.Sync()
 
-	rl := utils.NewRateLimiter()
+	rl := limiter.NewRateLimiter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
@@ -45,12 +47,12 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(60 * time.Second))
 
-	router.Use(utils.LoggerMiddleware(logger))
+	router.Use(logger.Middleware(zlogger))
 
 	r := Router{
 		router:      router,
 		queries:     q,
-		logger:      logger,
+		logger:      zlogger,
 		rateLimiter: rl,
 	}
 
@@ -59,7 +61,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 30))
 
 			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
-				utils.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm A Teapot!"})
+				response.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm A Teapot!"})
 			})
 		})
 
@@ -82,7 +84,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
 				account := auth.GetClaims(req.Context())
-				utils.RespondWithJSON(w, http.StatusOK,
+				response.RespondWithJSON(w, http.StatusOK,
 					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
 			})
 
@@ -99,7 +101,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
 				account := auth.GetClaims(req.Context())
-				utils.RespondWithJSON(w, http.StatusOK,
+				response.RespondWithJSON(w, http.StatusOK,
 					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
 			})
 			subRouter.Post("/auth/logout", authHandler.Logout)

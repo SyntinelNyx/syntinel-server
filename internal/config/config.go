@@ -4,14 +4,14 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"log"
-	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/router"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
+	"github.com/SyntinelNyx/syntinel-server/internal/router"
 )
 
 var AllowedOrigins []string
@@ -27,7 +27,7 @@ func init() {
 
 func LoadEnv(filePath string) {
 	if err := godotenv.Load(filePath); err != nil {
-		log.Fatalln("Error loading .env file")
+		logger.Fatal("Error loading .env file")
 	}
 }
 
@@ -50,26 +50,26 @@ func SetupEnv(flags *Flags) error {
 	case "development":
 		LoadEnv(".env")
 		viper.SetConfigName("config.dev.yaml")
-		slog.Info("Running in development mode...")
+		logger.Info("Running in development mode...")
 	case "production":
 		if flags.EnvFile != "" {
 			LoadEnv(flags.EnvFile)
 		}
 		viper.SetConfigName("config.yaml")
-		slog.Info("Running in production mode...")
+		logger.Info("Running in production mode...")
 	default:
 		return fmt.Errorf("unknown environment: %s", flags.Environment)
 	}
 
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+	viper.AddConfigPath("./data/")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Failed to read configuration file")
+		logger.Fatal("Failed to read configuration file")
 	}
 
 	AllowedOrigins = viper.GetStringSlice("cors.allowed_origins")
-	slog.Info("CORS allowed origins loaded:", "origins", AllowedOrigins)
+	logger.Info("CORS allowed origins loaded: %v", AllowedOrigins)
 
 	return nil
 }
@@ -80,7 +80,7 @@ func ConfigPort(flags *Flags) string {
 		port = fmt.Sprintf(":%d", flags.Port)
 	} else {
 		if os.Getenv("APP_PORT") == "" {
-			slog.Warn("No port specified, default port :80 used...")
+			logger.Warn("No port specified, default port :80 used...")
 			return ":80"
 		}
 		port = fmt.Sprintf(":%s", os.Getenv("APP_PORT"))

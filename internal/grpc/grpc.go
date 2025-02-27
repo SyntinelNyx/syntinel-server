@@ -2,41 +2,35 @@ package grpc
 
 import (
 	"context"
-	"log"
-	"log/slog"
 	"net"
-	"os"
 
-	pb "github.com/SyntinelNyx/syntinel-server/internal/proto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
+	"github.com/SyntinelNyx/syntinel-server/internal/proto"
 )
 
 type server struct {
-	pb.UnimplementedHardwareServiceServer
+	proto.UnimplementedHardwareServiceServer
 }
 
-func (s *server) SendHardwareInfo(ctx context.Context, req *pb.HardwareInfo) (*pb.Response, error) {
-	log.Printf("Received hardware info: %s", req.JsonData)
-	return &pb.Response{Message: "Hardware info received successfully"}, nil
+func (s *server) SendHardwareInfo(ctx context.Context, req *proto.HardwareInfo) (*proto.Response, error) {
+	logger.Info("Received hardware info: %s", req.JsonData)
+	return &proto.Response{Message: "Hardware info received successfully"}, nil
 }
 
-func StartServer() {
+func StartServer(grpcServer *grpc.Server) *grpc.Server {
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		logger.Fatal("Failed to listen: %v", err)
 	}
 
-	creds, err := credentials.NewServerTLSFromFile(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
-	if err != nil {
-		log.Fatalf("failed to create credentials: %v", err)
-	}
+	proto.RegisterHardwareServiceServer(grpcServer, &server{})
 
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	pb.RegisterHardwareServiceServer(grpcServer, &server{})
-
-	slog.Info("gRPC server listening on :50051 with TLS...")
+	logger.Info("gRPC server listening on :50051 with TLS...")
 	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		logger.Fatal("Failed to serve: %v", err)
 	}
+
+	return grpcServer
 }

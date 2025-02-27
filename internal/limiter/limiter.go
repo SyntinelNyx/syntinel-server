@@ -1,4 +1,4 @@
-package utils
+package limiter
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"golang.org/x/time/rate"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
 type RateLimiter struct {
@@ -52,7 +54,7 @@ func (rl *RateLimiter) RateLimitMiddleware(rateLimit rate.Limit, burst int) func
 			limiter := rl.GetLimiter(r.URL.Path, ip, rateLimit, burst)
 
 			if !limiter.Allow() {
-				RespondWithError(w, r, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests), fmt.Errorf("too many requests"))
+				response.RespondWithError(w, r, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests), fmt.Errorf("too many requests"))
 				return
 			}
 

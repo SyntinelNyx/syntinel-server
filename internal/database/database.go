@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
-	"log"
-	"log/slog"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 )
 
 //go:embed postgresql/schema.sql
@@ -21,16 +20,16 @@ var schema string
 func RunMigration() {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("Failed to connect to the database: %v", err)
+		logger.Fatal("Failed to connect to the database: %v", err)
 	}
 	defer db.Close()
 
 	_, err = db.Exec(schema)
 	if err != nil {
-		log.Fatalf("Database migration failed: %v", err)
+		logger.Fatal("Database migration failed: %v", err)
 	}
 
-	slog.Info("Database migration successful")
+	logger.Info("Database migration successful")
 }
 
 func InitDatabase() (*query.Queries, *pgxpool.Pool, error) {
@@ -45,7 +44,7 @@ func InitDatabase() (*query.Queries, *pgxpool.Pool, error) {
 	}
 	queries := query.New(conn)
 
-	slog.Info("Successfully connected to database...")
+	logger.Info("Successfully connected to database...")
 
 	return queries, conn, nil
 }

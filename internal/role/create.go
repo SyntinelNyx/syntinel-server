@@ -3,9 +3,11 @@ package role
 import (
 	"encoding/json"
 	"net/http"
-	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
-	"github.com/SyntinelNyx/syntinel-server/internal/utils"
+
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
 type CreateRequest struct {
@@ -24,7 +26,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var request CreateRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
 		return
 	}
 
@@ -42,9 +44,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	err := h.queries.AddRole(r.Context(), rolePermissions)
 	if err != nil {
-		utils.RespondWithError(w, r, http.StatusInternalServerError, "Failed to create role", err)
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to create role", err)
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Role Creation Successful"})
+	response.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Role Creation Successful"})
 }

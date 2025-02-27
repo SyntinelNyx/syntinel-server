@@ -1,31 +1,16 @@
-package utils
+package logger
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
-type errorKeyType struct{}
-
-var errorContextKey = errorKeyType{}
-
-func SetError(r *http.Request, err error) {
-	ctx := context.WithValue(r.Context(), errorContextKey, err)
-	*r = *r.WithContext(ctx)
-}
-
-func GetError(r *http.Request) error {
-	if err, ok := r.Context().Value(errorContextKey).(error); ok {
-		return err
-	}
-	return nil
-}
-
-func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
+func Middleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -44,7 +29,7 @@ func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 				zap.String("time", time.Now().Format(time.RFC3339)),
 			}
 
-			if err := GetError(r); err != nil {
+			if err := response.GetError(r); err != nil {
 				logFields = append(logFields, zap.Error(err))
 			}
 
