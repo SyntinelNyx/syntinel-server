@@ -24,6 +24,7 @@ WORKDIR /app
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/data/ /app/defaults/
+COPY --from=builder /app/docker-start.sh /app/docker-start.sh
 COPY --from=builder /app/syntinel-server /app/syntinel-server
 COPY --from=builder /app/internal/database/postgresql/schema.sql /app/postgresql/schema.sql
 
