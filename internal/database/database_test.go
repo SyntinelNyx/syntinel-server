@@ -21,7 +21,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 
 func TestRunMigration(t *testing.T) {
 	if os.Getenv("NONLOCAL_TESTS") != "" {
-		t.Skip("Skipping test meant for non-local environments.")
+		t.Skip("Skipping test meant for local environments.")
 	}
 
 	config.LoadEnv("../../.env")
@@ -37,7 +37,7 @@ func TestRunMigration(t *testing.T) {
 
 func TestInitDatabase(t *testing.T) {
 	if os.Getenv("NONLOCAL_TESTS") != "" {
-		t.Skip("Skipping test meant for non-local environments.")
+		t.Skip("Skipping test meant for local environments.")
 	}
 
 	config.LoadEnv("../../.env")

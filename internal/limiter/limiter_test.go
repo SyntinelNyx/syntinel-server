@@ -23,23 +23,23 @@ func TestGetIP(t *testing.T) {
 }
 
 func TestGetLimiter(t *testing.T) {
-	rl := NewRateLimiter()
+	rl := New()
 
-	limiter1 := rl.GetLimiter("/test", "127.0.0.1", 1, 1)
+	limiter1 := rl.Get("/test", "127.0.0.1", 1, 1)
 	require.NotNil(t, limiter1)
 
-	limiter2 := rl.GetLimiter("/test", "127.0.0.1", 1, 1)
+	limiter2 := rl.Get("/test", "127.0.0.1", 1, 1)
 	assert.Same(t, limiter1, limiter2)
 
-	limiter3 := rl.GetLimiter("/another", "127.0.0.1", 1, 1)
+	limiter3 := rl.Get("/another", "127.0.0.1", 1, 1)
 	assert.NotSame(t, limiter1, limiter3)
 
-	limiter4 := rl.GetLimiter("/test", "192.168.0.1", 1, 1)
+	limiter4 := rl.Get("/test", "192.168.0.1", 1, 1)
 	assert.NotSame(t, limiter1, limiter4)
 }
 
-func TestRateLimitMiddleware(t *testing.T) {
-	rl := NewRateLimiter()
+func TestMiddleware(t *testing.T) {
+	rl := New()
 	rateLimit := rate.Limit(1)
 	burst := 1
 
@@ -51,7 +51,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	handler := rl.RateLimitMiddleware(rateLimit, burst)(nextHandler)
+	handler := rl.Middleware(rateLimit, burst)(nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = net.JoinHostPort("127.0.0.1", "12345")
@@ -72,8 +72,8 @@ func TestRateLimitMiddleware(t *testing.T) {
 	assert.Equal(t, int32(0), atomic.LoadInt32(&nextCalled))
 }
 
-func TestRateLimitMiddlewareIndependent(t *testing.T) {
-	rl := NewRateLimiter()
+func TestMiddlewareIndependent(t *testing.T) {
+	rl := New()
 	rateLimit := rate.Limit(1)
 	burst := 1
 
@@ -84,7 +84,7 @@ func TestRateLimitMiddlewareIndependent(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := rl.RateLimitMiddleware(rateLimit, burst)
+	middleware := rl.Middleware(rateLimit, burst)
 
 	req1 := httptest.NewRequest(http.MethodGet, "/path1", nil)
 	req1.RemoteAddr = net.JoinHostPort("127.0.0.1", "1111")
@@ -103,8 +103,8 @@ func TestRateLimitMiddlewareIndependent(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&handlerCallCount))
 }
 
-func TestRateLimiterConcurrency(t *testing.T) {
-	rl := NewRateLimiter()
+func TestLimiterConcurrency(t *testing.T) {
+	rl := New()
 	path := "/concurrent"
 	ip := "127.0.0.1"
 
@@ -114,7 +114,7 @@ func TestRateLimiterConcurrency(t *testing.T) {
 
 	for i := 0; i < goroutines; i++ {
 		go func() {
-			limiter := rl.GetLimiter(path, ip, 5, 10)
+			limiter := rl.Get(path, ip, 5, 10)
 			limiterCh <- limiter
 			doneCh <- struct{}{}
 		}()
