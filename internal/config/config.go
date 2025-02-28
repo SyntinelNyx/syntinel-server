@@ -22,9 +22,6 @@ type Flags struct {
 	EnvFile     string
 }
 
-func init() {
-}
-
 func LoadEnv(filePath string) {
 	if err := godotenv.Load(filePath); err != nil {
 		logger.Fatal("Error loading .env file")
@@ -65,7 +62,7 @@ func SetupEnv(flags *Flags) error {
 	viper.AddConfigPath("./data/")
 
 	if err := viper.ReadInConfig(); err != nil {
-		logger.Fatal("Failed to read configuration file")
+    logger.Fatal("Failed to read configuration file: %v", err)
 	}
 
 	AllowedOrigins = viper.GetStringSlice("cors.allowed_origins")
