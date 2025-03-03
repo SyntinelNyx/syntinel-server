@@ -3,7 +3,7 @@
 mkdir -p /app/data
 mkdir -p /app/data/certs
 
-FILES = "config.yaml ecdsa_private.pem ecdsa_public.pem"
+FILES="config.yaml ecdsa_private.pem ecdsa_public.pem"
 CERTS="ca_cert.pem ca_key.pem server_cert.pem server_key.pem"
 
 for file in $FILES; do
