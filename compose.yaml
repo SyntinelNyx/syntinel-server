@@ -55,7 +55,7 @@ services:
       - /srv/syntinel-server/server_cert.pem:/etc/postgresql/certs/server_cert.pem:ro
       - /srv/syntinel-server/server_key.pem:/etc/postgresql/certs/server_key.pem:ro
       - /srv/syntinel-server/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem:ro
-    entrypoint: ["sh", "-c", "chown -R postgres:postgres /etc/postgresql/certs && exec gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem"]
+    command: chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data && exec gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
     restart: always
 
 networks:
