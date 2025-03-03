@@ -1,7 +1,9 @@
 services:
   syntinel-server:
     container_name: syntinel-server
-    image: registry.syntinel.dev/syntinel-server:latest
+    image: syntinel-server:latest
+    build:
+      context: .
     stdin_open: true
     tty: true
     environment:
