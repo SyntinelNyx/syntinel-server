@@ -20,7 +20,8 @@ services:
     ports:
       - 8080:8080
     networks:
-      - syntinel-network
+      syntinel-network:
+        ipv4_address: 172.128.0.2
     volumes:
       - /srv/syntinel-server:/app/data
     restart: always
@@ -33,7 +34,8 @@ services:
     volumes:
       - /srv/syntinel-server/redis_data:/data
     networks:
-      - syntinel-network
+      syntinel-network:
+        ipv4_address: 172.128.0.3
     restart: always
 
   postgres:
@@ -47,7 +49,8 @@ services:
     ports:
       - 5432:5432
     networks:
-      - syntinel-network
+      syntinel-network:
+        ipv4_address: 172.128.0.4
     volumes:
       - /srv/syntinel-server/postgres_data:/var/lib/postgresql/data
       - /srv/syntinel-server/certs:/etc/postgresql/certs
@@ -67,7 +70,7 @@ services:
           rm -rf "/etc/postgresql/certs/server_key.pem"
         fi
         gosu postgres initdb -D /var/lib/postgresql/data/pgdata
-        echo "host  all all 172.28.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
+        echo "host  all all 172.128.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
         gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
     restart: always
 
