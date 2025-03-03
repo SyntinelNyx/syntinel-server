@@ -10,8 +10,8 @@ services:
       - APP_ENV=production
       - APP_PORT=8080
       - APP_CONFIG_PATH=/app/data/config.yaml
-      - REDIS_URL=localhost:6379
-      - DATABASE_URL=localhost:5432
+      - REDIS_URL=redis:6379
+      - DATABASE_URL=postgres://syntinel:syntinel@postgres:5432/syntinel
       - CSRF_SECRET=DEFAULT_SECRET_CHANGE_THIS
       - TLS_CERT_PATH=/app/data/certs/server_cert.pem
       - TLS_KEY_PATH=/app/data/certs/server_key.pem
@@ -42,7 +42,7 @@ services:
     image: postgres:latest
     environment:
       - POSTGRES_USER=syntinel
-      - POSTGRES_PASSWORD=DEFAULT_PASSWORD_CHANGE_THIS
+      - POSTGRES_PASSWORD=syntinel
       - POSTGRES_DB=syntinel
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
@@ -52,15 +52,6 @@ services:
     volumes:
       - /srv/syntinel-server/postgres_data:/var/lib/postgresql/data
       - /srv/syntinel-server/certs:/etc/postgresql/certs
-      - type: bind
-        source: /srv/syntinel-server/certs/ca_cert.pem
-        target: /etc/postgresql/certs/ca_cert.pem
-      - type: bind
-        source: /srv/syntinel-server/certs/server_cert.pem
-        target: /etc/postgresql/certs/server_cert.pem
-      - type: bind
-        source: /srv/syntinel-server/certs/server_key.pem
-        target: /etc/postgresql/certs/server_key.pem
     command:
       - /bin/sh
       - -c
