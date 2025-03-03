@@ -74,3 +74,6 @@ services:
 networks:
   syntinel-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.128.0.0/16
