@@ -52,9 +52,15 @@ services:
     volumes:
       - /srv/syntinel-server/postgres_data:/var/lib/postgresql/data
       - /srv/syntinel-server/certs:/etc/postgresql/certs
-      - /srv/syntinel-server/certs/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem
-      - /srv/syntinel-server/certs/server_cert.pem:/etc/postgresql/certs/server_cert.pem
-      - /srv/syntinel-server/certs/server_key.pem:/etc/postgresql/certs/server_key.pem
+      - type: bind
+        source: /srv/syntinel-server/certs/ca_cert.pem
+        target: /etc/postgresql/certs/ca_cert.pem
+      - type: bind
+        source: /srv/syntinel-server/certs/server_cert.pem
+        target: /etc/postgresql/certs/server_cert.pem
+      - type: bind
+        source: /srv/syntinel-server/certs/server_key.pem
+        target: /etc/postgresql/certs/server_key.pem
     command:
       - /bin/sh
       - -c
