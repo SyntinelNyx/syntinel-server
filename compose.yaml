@@ -7,22 +7,23 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - APP_ENV=
-      - APP_PORT=
-      - APP_CONFIG_PATH=
-      - REDIS_URL=
-      - DATABASE_URL=
-      - CSRF_SECRET=
-      - TLS_CERT_PATH=/app/data/server_cert.pem
-      - TLS_KEY_PATH=/app/data/server_key.pem
-      - ECDSA_PUBLIC_KEY_PATH=
-      - ECDSA_PRIVATE_KEY_PATH=
+      - APP_ENV=production
+      - APP_PORT=8080
+      - APP_CONFIG_PATH=/app/data/config.yaml
+      - REDIS_URL=localhost:6379
+      - DATABASE_URL=localhost:5432
+      - CSRF_SECRET=DEFAULT_SECRET_CHANGE_THIS
+      - TLS_CERT_PATH=/app/data/certs/server_cert.pem
+      - TLS_KEY_PATH=/app/data/certs/server_key.pem
+      - ECDSA_PUBLIC_KEY_PATH=/app/data/ecdsa_public.pem
+      - ECDSA_PRIVATE_KEY_PATH=/app/data/ecdsa_private.pem
     ports:
       - 8080:8080
     networks:
       - syntinel-network
     volumes:
       - /srv/syntinel-server:/app/data
+      - /srv/syntinel-server/certs:/app/data/certs
     restart: always
 
   redis:
@@ -40,9 +41,9 @@ services:
     container_name: postgres
     image: postgres:latest
     environment:
-      - POSTGRES_USER=
-      - POSTGRES_PASSWORD=
-      - POSTGRES_DB=
+      - POSTGRES_USER=syntinel
+      - POSTGRES_PASSWORD=DEFAULT_PASSWORD_CHANGE_THIS
+      - POSTGRES_DB=syntinel
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
       - 5432:5432
@@ -50,9 +51,10 @@ services:
       - syntinel-network
     volumes:
       - /srv/syntinel-server/postgres_data:/var/lib/postgresql/data
-      - /srv/syntinel-server/server_cert.pem:/etc/postgresql/certs/server_cert.pem:ro
-      - /srv/syntinel-server/server_key.pem:/etc/postgresql/certs/server_key.pem:ro
-      - /srv/syntinel-server/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem:ro
+      - /srv/syntinel-server/certs:/etc/postgresql/certs
+      - /srv/syntinel-server/certs/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem
+      - /srv/syntinel-server/certs/server_cert.pem:/etc/postgresql/certs/server_cert.pem
+      - /srv/syntinel-server/certs/server_key.pem:/etc/postgresql/certs/server_key.pem
     command:
       - /bin/sh
       - -c
