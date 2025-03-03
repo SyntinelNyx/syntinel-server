@@ -90,6 +90,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
+			subRouter.Post("/role/delete", roleHandler.DeleteRole)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
