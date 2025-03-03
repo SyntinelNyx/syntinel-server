@@ -43,10 +43,7 @@ services:
       - POSTGRES_USER=
       - POSTGRES_PASSWORD=
       - POSTGRES_DB=
-      - PGSSLMODE=require
-      - PGSSLCERT=/etc/postgresql/certs/server_cert.pem
-      - PGSSLKEY=/etc/postgresql/certs/server_key.pem
-      - PGSSLROOTCERT=/etc/postgresql/certs/ca_cert.pem
+      - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
       - 5432:5432
     networks:
@@ -56,6 +53,12 @@ services:
       - /srv/syntinel-server/server_cert.pem:/etc/postgresql/certs/server_cert.pem:ro
       - /srv/syntinel-server/server_key.pem:/etc/postgresql/certs/server_key.pem:ro
       - /srv/syntinel-server/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem:ro
+    command: 
+      - /bin/sh
+      - -c
+      - |
+        chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data
+        gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
     restart: always
 
 networks:
