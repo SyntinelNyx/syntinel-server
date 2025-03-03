@@ -13,7 +13,7 @@ for file in $FILES; do
 done
 
 for cert in $CERTS; do
-    if [ ! -f "/app/data/cert/$cert" ]; then
+    if [ ! -f "/app/data/certs/$cert" ]; then
         cp "/app/defaults/$cert" "/app/data/certs/$cert"
     fi
 done
