@@ -46,9 +46,9 @@ services:
       - 5432:5432
     volumes:
       - ./syntinel-server/postgres_data:/var/lib/postgresql/data
-      - ./syntinel-server/server_cert.pem:/etc/postgresql/certs/server_cert.pem:ro
-      - ./syntinel-server/server_key.pem:/etc/postgresql/certs/server_key.pem:ro
-      - ./syntinel-server/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem:ro
+      - ./syntinel-server/server_cert.pem:/etc/postgresql/certs/server_cert.pem
+      - ./syntinel-server/server_key.pem:/etc/postgresql/certs/server_key.pem
+      - ./syntinel-server/ca_cert.pem:/etc/postgresql/certs/ca_cert.pem
     entrypoint: ["sh", "-c", "chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data && exec gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem"]
     networks:
       - syntinel-network
