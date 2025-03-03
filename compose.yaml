@@ -55,12 +55,10 @@ services:
       - /bin/sh
       - -c
       - |
-        chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data
         mkdir -p /var/lib/postgresql/data/pgdata
-        chown -R postgres:postgres /var/lib/postgresql/data
-        echo "host  all all 172.28.0.0/16    md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
-        echo "listen_addresses = '*'" >> /var/lib/postgresql/data/pgdata/postgresql.conf
+        chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data
         gosu postgres initdb -D /var/lib/postgresql/data/pgdata
+        echo "host  all all 172.28.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
         gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
     restart: always
 
