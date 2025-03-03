@@ -23,7 +23,6 @@ services:
       - syntinel-network
     volumes:
       - /srv/syntinel-server:/app/data
-      - /srv/syntinel-server/certs:/app/data/certs
     restart: always
 
   redis:
