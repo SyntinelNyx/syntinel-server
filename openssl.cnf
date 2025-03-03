@@ -20,6 +20,7 @@ subjectAltName          = @server_alt_names
 
 [server_alt_names]
 DNS.1 = *.syntinel.dev
+DNS.2 = postgres
 
 [test_client]
 basicConstraints        = critical,CA:FALSE
