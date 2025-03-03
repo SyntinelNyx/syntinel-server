@@ -27,10 +27,6 @@ openssl req -new                                    \
   -config ./openssl.cnf                             \
   -reqexts test_server
 
-# Change permissions of the server key and csr to allow postgre to read them
-chmod 600 data/server_key.pem 
-chmod 600 data/server_csr.pem
-
 # Sign the server certificate with the CA.
 openssl x509 -req           \
   -in data/server_csr.pem   \
@@ -42,9 +38,6 @@ openssl x509 -req           \
   -extfile ./openssl.cnf    \
   -extensions test_server   \
   -sha256
-
-# Change permissions of the server key and csr to allow postgre to read them
-chmod 600 data/server_cert.pem
 
 # Verify the generated server certificate.
 openssl verify -verbose -CAfile data/ca_cert.pem data/server_cert.pem
