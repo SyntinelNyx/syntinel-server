@@ -57,7 +57,8 @@ CREATE TABLE
 CREATE TABLE
   IF NOT EXISTS roles(
     role_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    role_name VARCHAR(255) NOT NULL UNIQUE
+    role_name VARCHAR(255) NOT NULL UNIQUE,
+    is_deleted BOOLEAN DEFAULT FALSE
   );
 
 CREATE TABLE
