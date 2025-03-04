@@ -39,7 +39,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 	zlogger, _ := zap.NewProduction()
 	defer zlogger.Sync()
 
-	rl := limiter.NewRateLimiter()
+	rl := limiter.New()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
@@ -58,7 +58,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 	r.router.Route("/v1/api", func(apiRouter chi.Router) {
 		apiRouter.Group(func(subRouter chi.Router) {
-			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 30))
+			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 30))
 
 			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
 				response.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm A Teapot!"})
@@ -66,7 +66,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
-			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 3))
 
 			authHandler := auth.NewHandler(r.queries)
 
@@ -75,7 +75,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
-			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 3))
+			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 3))
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
@@ -94,7 +94,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
-			subRouter.Use(r.rateLimiter.RateLimitMiddleware(rate.Every(1*time.Second), 10))
+			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 10))
 
 			authHandler := auth.NewHandler(r.queries)
 			subRouter.Use(authHandler.JWTMiddleware)

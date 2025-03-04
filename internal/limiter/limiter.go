@@ -16,7 +16,7 @@ type RateLimiter struct {
 	mu       sync.RWMutex
 }
 
-func NewRateLimiter() *RateLimiter {
+func New() *RateLimiter {
 	return &RateLimiter{
 		limiters: make(map[string]map[string]*rate.Limiter),
 	}
@@ -30,7 +30,7 @@ func GetIP(r *http.Request) string {
 	return ip
 }
 
-func (rl *RateLimiter) GetLimiter(path string, ip string, r rate.Limit, burst int) *rate.Limiter {
+func (rl *RateLimiter) Get(path string, ip string, r rate.Limit, burst int) *rate.Limiter {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -47,11 +47,11 @@ func (rl *RateLimiter) GetLimiter(path string, ip string, r rate.Limit, burst in
 	return limiter
 }
 
-func (rl *RateLimiter) RateLimitMiddleware(rateLimit rate.Limit, burst int) func(http.Handler) http.Handler {
+func (rl *RateLimiter) Middleware(rateLimit rate.Limit, burst int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := GetIP(r)
-			limiter := rl.GetLimiter(r.URL.Path, ip, rateLimit, burst)
+			limiter := rl.Get(r.URL.Path, ip, rateLimit, burst)
 
 			if !limiter.Allow() {
 				response.RespondWithError(w, r, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests), fmt.Errorf("too many requests"))
