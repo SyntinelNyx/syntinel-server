@@ -11,7 +11,7 @@ services:
       - APP_PORT=8080
       - APP_CONFIG_PATH=/app/data/config.yaml
       - REDIS_URL=redis:6379
-      - DATABASE_URL=postgres://postgres:syntinel@172.128.0.4:5432/syntinel
+      - DATABASE_URL=postgres://syntinel:syntinel@172.128.0.4:5432/syntinel
       - CSRF_SECRET=DEFAULT_SECRET_CHANGE_THIS
       - TLS_CERT_PATH=/app/data/certs/server_cert.pem
       - TLS_KEY_PATH=/app/data/certs/server_key.pem
