@@ -11,7 +11,7 @@ services:
       - APP_PORT=8080
       - APP_CONFIG_PATH=/app/data/config.yaml
       - REDIS_URL=redis:6379
-      - DATABASE_URL=postgres://syntinel:syntinel@172.128.0.4:5432/syntinel
+      - DATABASE_URL=postgres://syntinel:syntinel@postgres:5432/syntinel?sslmode=disable
       - CSRF_SECRET=DEFAULT_SECRET_CHANGE_THIS
       - TLS_CERT_PATH=/app/data/certs/server_cert.pem
       - TLS_KEY_PATH=/app/data/certs/server_key.pem
@@ -20,8 +20,7 @@ services:
     ports:
       - 8080:8080
     networks:
-      syntinel-network:
-        ipv4_address: 172.128.0.2
+      - syntinel-network
     volumes:
       - /srv/syntinel-server:/app/data
     restart: always
@@ -34,8 +33,7 @@ services:
     volumes:
       - /srv/syntinel-server/redis_data:/data
     networks:
-      syntinel-network:
-        ipv4_address: 172.128.0.3
+      - syntinel-network
     restart: always
 
   postgres:
@@ -49,42 +47,11 @@ services:
     ports:
       - 5432:5432
     networks:
-      syntinel-network:
-        ipv4_address: 172.128.0.4
+      - syntinel-network
     volumes:
       - /srv/syntinel-server/postgres_data:/var/lib/postgresql/data
-      - /srv/syntinel-server/certs:/etc/postgresql/certs
-    command:
-      - /bin/sh
-      - -c
-      - |
-        sleep 5s
-        chown -R postgres:postgres /etc/postgresql/certs /var/lib/postgresql/data
-        mkdir -p /var/lib/postgresql/data/pgdata
-        chown -R postgres:postgres /var/lib/postgresql/data
-        # Check if files exist and are not directories
-        if [ -d "/etc/postgresql/certs/server_cert.pem" ]; then
-          rm -rf "/etc/postgresql/certs/server_cert.pem"
-        fi
-        if [ -d "/etc/postgresql/certs/server_key.pem" ]; then
-          rm -rf "/etc/postgresql/certs/server_key.pem"
-        fi
-        gosu postgres initdb -D /var/lib/postgresql/data/pgdata
-        echo "host  all all 172.128.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
-        gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
-        sleep 5s
-        gosu postgres psql -U postgres -c "CREATE USER syntinel WITH PASSWORD 'syntinel';"
-        gosu postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
-        gosu postgres psql -U postgres -c "ALTER USER syntinel WITH CREATEDB;"
-        gosu postgres psql -U postgres -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO syntinel;"
-        gosu postgres psql -U postgres -c "GRANT ALL ON SCHEMA public TO syntinel;"
-
     restart: always
 
 networks:
   syntinel-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.128.0.0/16
-          gateway: 172.128.0.1
