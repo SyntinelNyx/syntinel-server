@@ -73,13 +73,9 @@ services:
         echo "host  all all 172.128.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
         gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
         sleep 5s
-        sleep 5s
-        gosu postgres postgres &
-        sleep 5s
-        gosu postgres psql -c "CREATE USER syntinel WITH PASSWORD 'syntinel';"
-        gosu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
-        gosu postgres psql -c "ALTER USER syntinel WITH SUPERUSER;"
-        gosu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
+        gosu postgres psql -U postgres -c "CREATE USER syntinel WITH PASSWORD 'syntinel';"
+        gosu postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
+        gosu postgres psql -U postgres -c "ALTER USER syntinel WITH CREATEDB;"
     restart: always
 
 networks:
