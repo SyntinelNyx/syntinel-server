@@ -71,10 +71,14 @@ services:
         fi
         gosu postgres initdb -D /var/lib/postgresql/data/pgdata
         echo "host  all all 172.128.0.0/16 md5" >> /var/lib/postgresql/data/pgdata/pg_hba.conf
+        gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
+        sleep 5s
         gosu postgres psql -U postgres -c "CREATE USER syntinel WITH PASSWORD 'syntinel';"
         gosu postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
         gosu postgres psql -U postgres -c "ALTER USER syntinel WITH CREATEDB;"
-        gosu postgres postgres -c ssl=on -c ssl_cert_file=/etc/postgresql/certs/server_cert.pem -c ssl_key_file=/etc/postgresql/certs/server_key.pem -c ssl_ca_file=/etc/postgresql/certs/ca_cert.pem
+        gosu postgres psql -U postgres -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO syntinel;"
+        gosu postgres psql -U postgres -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO syntinel;"
+
     restart: always
 
 networks:
