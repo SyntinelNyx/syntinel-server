@@ -1,4 +1,4 @@
-package auth
+package key
 
 import (
 	"crypto/ecdsa"
@@ -15,7 +15,7 @@ const (
 	PublicKey
 )
 
-func loadECDSAKey(path string, keyType KeyType) (interface{}, error) {
+func Load(path string, keyType KeyType) (interface{}, error) {
 	keyData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("could not read key file: %v", err)

@@ -6,7 +6,9 @@ syntinel-server:
 run:
 	@go run ./cmd/syntinel-server -e $(env) -p $(port)
 test:
-	@go test ./...
+	@go test ./... -v
+test_coverage:
+	@go test -cover ./...
 clean:
 	@rm ./syntinel-server
 proto:
