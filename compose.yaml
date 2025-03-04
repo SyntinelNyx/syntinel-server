@@ -76,6 +76,7 @@ services:
         gosu postgres psql -c "CREATE USER syntinel WITH PASSWORD 'syntinel';"
         gosu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
         gosu postgres psql -c "ALTER USER syntinel WITH SUPERUSER;"
+        gosu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
     restart: always
 
 networks:
