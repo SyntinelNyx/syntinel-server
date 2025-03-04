@@ -77,7 +77,7 @@ services:
         gosu postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE syntinel TO syntinel;"
         gosu postgres psql -U postgres -c "ALTER USER syntinel WITH CREATEDB;"
         gosu postgres psql -U postgres -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO syntinel;"
-        gosu postgres psql -U postgres -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO syntinel;"
+        gosu postgres psql -U postgres -c "GRANT ALL ON SCHEMA public TO syntinel;"
 
     restart: always
 
