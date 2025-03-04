@@ -1,5 +1,5 @@
 -- name: GetAllRoles :many
-SELECT role_name FROM roles;
+SELECT role_name FROM roles WHERE is_deleted = FALSE;
 
 -- name: GetRolePermissions :one
 SELECT p.* FROM roles r
@@ -9,6 +9,9 @@ JOIN
     permissions p ON rp.permission_id = p.permission_id
 WHERE
     r.role_name = $1;
+
+-- name: GetRoleByName :one
+SELECT * FROM roles WHERE role_name = $1;
 
 -- name: GetUserRoles :one
 SELECT role_name FROM roles r
@@ -70,10 +73,11 @@ WITH updated_permission AS (
         start_scans = $9
     WHERE
         permission_id = (
-            SELECT permission_id
+            SELECT rp.permission_id
             FROM roles_permissions rp
             JOIN roles r ON rp.role_id = r.role_id
             WHERE r.role_name = $1
+            LIMIT 1
         )
     RETURNING permission_id
 )
@@ -81,8 +85,13 @@ UPDATE roles_permissions rp
 SET
     permission_id = updated_permission.permission_id
 FROM updated_permission
-JOIN roles r ON rp.role_id = r.role_id
-WHERE r.role_name = $1;
+WHERE rp.permission_id != updated_permission.permission_id
+  AND rp.role_id = (
+    SELECT r.role_id
+    FROM roles r
+    WHERE r.role_name = $1
+    LIMIT 1
+  );
 
 -- name: AddRole :exec
 WITH inserted_role AS (
@@ -110,12 +119,11 @@ JOIN roles r ON r.role_name = $1
 WHERE ia.username = $2;
 
 -- name: RemoveRole :exec
-DELETE FROM roles_permissions
-WHERE role_id = (
-	SELECT role_id
-	FROM roles
-	WHERE role_name = $1
-);
+UPDATE roles
+SET is_deleted = TRUE
+WHERE role_name = $1;
 
-DELETE FROM roles
+-- name: ReactivateRole :exec
+UPDATE roles
+SET is_deleted = FALSE
 WHERE role_name = $1;
