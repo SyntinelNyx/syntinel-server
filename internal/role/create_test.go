@@ -17,6 +17,10 @@ import (
 )
 
 func setupTestDB(t *testing.T) (*Handler, *pgxpool.Pool) {
+  if os.Getenv("NONLOCAL_TESTS") != "" {
+		t.Skip("Skipping test meant for local environments.")
+	}
+
 	if err := godotenv.Load("../../.env"); err != nil {
 		t.Fatal("Error loading .env file")
 	}
