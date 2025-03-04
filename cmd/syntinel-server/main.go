@@ -16,6 +16,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
+	"github.com/SyntinelNyx/syntinel-server/internal/kopia"
 )
 
 func main() {
@@ -32,6 +33,8 @@ func main() {
 		logger.Fatal("Failed to start database: %v", err)
 	}
 	defer pool.Close()
+
+	kopia.InitializeKopiaRepo()
 
 	router := router.SetupRouter(queries, config.AllowedOrigins)
 	server := config.SetupServer(port, router, flags)

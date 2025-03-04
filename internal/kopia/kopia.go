@@ -7,10 +7,10 @@ import (
 
 	"github.com/kopia/kopia/repo"
 	"github.com/kopia/kopia/repo/blob/filesystem"
-    "github.com/kopia/kopia/repo/content/format"
+    "github.com/kopia/kopia/repo/content"
 )
 
-func initialize_kopia_repo(){
+func InitializeKopiaRepo(){
     // Define the repository configuration
     repoPath := "/data/kopia-repo"
     password := "your-password"
