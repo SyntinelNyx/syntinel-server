@@ -33,7 +33,7 @@ func main() {
 		logger.Fatal("Failed to start database: %v", err)
 	}
 	defer pool.Close()
-
+	
 	kopia.InitializeKopiaRepo()
 
 	router := router.SetupRouter(queries, config.AllowedOrigins)
@@ -79,4 +79,8 @@ func main() {
 	grpcServer.GracefulStop()
 
 	logger.Info("Shutdown complete.")
+}
+
+func Initialize(context context.Context, s1, s2 string) {
+	panic("unimplemented")
 }

@@ -1,0 +1,23 @@
+{
+  "storage": {
+    "type": "s3",
+    "config": {
+      "bucket": "kopia-test",
+      "prefix": "snapshot-",
+      "endpoint": "192.168.8.171:9000",
+      "doNotUseTLS": true,
+      "accessKeyID": "v0Km7Nn1I3mrXThpGm0k",
+      "secretAccessKey": "pKqOooSfUbnRGjSoQ5DQ2udfRSOrIoVZLC2CeOzy",
+      "sessionToken": "",
+      "region": "west"
+    }
+  },
+  "caching": {
+    "cacheDirectory": "."
+  },
+  "hostname": "buildbox",
+  "username": "root",
+  "description": "Repository in S3: 192.168.8.171:9000 kopia-test",
+  "enableActions": false,
+  "formatBlobCacheDuration": 900000000000
+}

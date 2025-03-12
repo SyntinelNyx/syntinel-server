@@ -13,4 +13,12 @@
 redis_data
 *.rdb
 
+indexes
+blob-list
+own-writes
+kopia.blobcfg
+kopia.repository
+repository.config
+
+
 syntinel-server
