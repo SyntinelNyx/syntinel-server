@@ -13,6 +13,7 @@
 redis_data
 *.rdb
 
+config.json
 indexes
 blob-list
 own-writes

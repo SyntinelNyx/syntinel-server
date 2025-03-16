@@ -16,7 +16,7 @@
     "cacheDirectory": "."
   },
   "hostname": "buildbox",
-  "username": "root",
+  "username": "rogueking",
   "description": "Repository in S3: 192.168.8.171:9000 kopia-test",
   "enableActions": false,
   "formatBlobCacheDuration": 900000000000
