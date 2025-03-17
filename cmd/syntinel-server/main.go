@@ -16,7 +16,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
-	// "github.com/SyntinelNyx/syntinel-server/internal/kopia"
+	"github.com/SyntinelNyx/syntinel-server/internal/kopia"
 )
 
 func main() {
@@ -36,6 +36,8 @@ func main() {
 
 	router := router.SetupRouter(queries, config.AllowedOrigins)
 	server := config.SetupServer(port, router, flags)
+
+	kopia.InitializeKopiaRepo()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
