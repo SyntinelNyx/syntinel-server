@@ -39,20 +39,28 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 }
 
 func (s *server)BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
-	go func() {
-		for {
-			req, err := stream.Recv()
-			if err == io.EOF {
-				log.Println("Agent closed the stream")
-				break
-			}
-			if err != nil {
-				log.Printf("Error receiving message from agent: %v", err)
-				break
-			}
-			log.Printf("Received message from agent: %s", req.Name)
-		}
-	}()
+    ctx := stream.Context()
+
+    go func() {
+        for {
+            select {
+            case <-ctx.Done():
+                log.Println("Stream context canceled by client")
+                return
+            default:
+                req, err := stream.Recv()
+                if err == io.EOF {
+                    log.Println("Agent closed the stream")
+                    return
+                }
+                if err != nil {
+                    log.Printf("Error receiving message from agent: %v", err)
+                    return
+                }
+                log.Printf("Received message from agent: %s", req.Name)
+            }
+        }
+    }()
 
 	// Example: Sending a file to the agent
 	filePath := "./data/scripts/example.txt"
