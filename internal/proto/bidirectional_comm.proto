@@ -1,0 +1,28 @@
+syntax = "proto3";
+package grpc;
+
+option go_package = "github.com/SyntinelNyx/syntinel-server/internal/proto";
+
+service AgentService {
+  rpc SendHardwareInfo (HardwareInfo) returns (HardwareResponse);
+  rpc BidirectionalStream (stream ReceiveScript) returns (stream ScriptResponse);
+}
+
+message HardwareInfo {
+  string json_data = 1; // The JSON string containing hardware info
+}
+
+message HardwareResponse {
+  string message = 1; // Response message from the server
+}
+
+message ReceiveScript {
+  string name = 1; // Name of the script
+  bytes content = 2; // The script to be executed
+}
+
+message ScriptResponse {
+  string name = 1; // Name of the script
+  string status = 2; // Status of the script transfer
+  string content = 3; // The output of the script
+}
