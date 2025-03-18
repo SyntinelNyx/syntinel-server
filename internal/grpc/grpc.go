@@ -62,40 +62,39 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 			}
 		}
 	}()
+	// Send file to agent
+	filePath, err := actions.GetScript("test")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	file, err := os.Open(filePath.Path)
+	if err != nil {
+		log.Printf("Error opening file: %v", err)
+		return err
+	}
+	defer file.Close()
+
+	buffer := make([]byte, 1024) // Adjust buffer size as needed
 	for {
-		// Send file to agent
-		filePath, err := actions.GetScript("test")
-		if err != nil {
-			log.Fatalf("Error: %v", err)
+		n, err := file.Read(buffer)
+		if err != nil && err != io.EOF {
+			log.Printf("Error reading file: %v", err)
+			break
+		}
+		if n == 0 {
+			break // End of file
 		}
 
-		file, err := os.Open(filePath.Path)
+		err = stream.Send(&proto.ScriptRequest{
+			Name:    filePath.Name, // Replace with the actual script name if needed
+			Content: buffer[:n],
+		})
 		if err != nil {
-			log.Printf("Error opening file: %v", err)
-			return err
-		}
-		defer file.Close()
-
-		buffer := make([]byte, 1024) // Adjust buffer size as needed
-		for {
-			n, err := file.Read(buffer)
-			if err != nil && err != io.EOF {
-				log.Printf("Error reading file: %v", err)
-				break
-			}
-			if n == 0 {
-				break // End of file
-			}
-
-			err = stream.Send(&proto.ScriptRequest{
-				Name:    filePath.Name, // Replace with the actual script name if needed
-				Content: buffer[:n],
-			})
-			if err != nil {
-				log.Printf("Error sending file to agent: %v", err)
-				break
-			}
+			log.Printf("Error sending file to agent: %v", err)
+			break
 		}
 	}
 
+	return nil
 }
