@@ -1,11 +1,12 @@
 syntax = "proto3";
 package grpc;
 
-option go_package = "github.com/SyntinelNyx/syntinel-server/internal/proto";
+option go_package = "github.com/SyntinelNyx/syntinel-agent/internal/proto";
 
 service AgentService {
   rpc SendHardwareInfo (HardwareInfo) returns (HardwareResponse);
-  rpc BidirectionalStream (stream ReceiveScript) returns (stream ScriptResponse);
+  rpc BidirectionalStream (stream ScriptResponse) returns (stream ScriptRequest);
+  rpc SendHeartbeat (Heartbeat) returns (Heartbeat);
 }
 
 message HardwareInfo {
@@ -16,7 +17,7 @@ message HardwareResponse {
   string message = 1; // Response message from the server
 }
 
-message ReceiveScript {
+message ScriptRequest {
   string name = 1; // Name of the script
   bytes content = 2; // The script to be executed
 }
@@ -24,5 +25,8 @@ message ReceiveScript {
 message ScriptResponse {
   string name = 1; // Name of the script
   string status = 2; // Status of the script transfer
-  string content = 3; // The output of the script
+}
+
+message Heartbeat {
+  string status = 1; // Message to be sent
 }

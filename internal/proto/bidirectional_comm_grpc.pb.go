@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	AgentService_SendHardwareInfo_FullMethodName    = "/grpc.AgentService/SendHardwareInfo"
 	AgentService_BidirectionalStream_FullMethodName = "/grpc.AgentService/BidirectionalStream"
+	AgentService_SendHeartbeat_FullMethodName       = "/grpc.AgentService/SendHeartbeat"
 )
 
 // AgentServiceClient is the client API for AgentService service.
@@ -29,6 +30,7 @@ const (
 type AgentServiceClient interface {
 	SendHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*HardwareResponse, error)
 	BidirectionalStream(ctx context.Context, opts ...grpc.CallOption) (AgentService_BidirectionalStreamClient, error)
+	SendHeartbeat(ctx context.Context, in *Heartbeat, opts ...grpc.CallOption) (*Heartbeat, error)
 }
 
 type agentServiceClient struct {
@@ -58,8 +60,8 @@ func (c *agentServiceClient) BidirectionalStream(ctx context.Context, opts ...gr
 }
 
 type AgentService_BidirectionalStreamClient interface {
-	Send(*ReceiveScript) error
-	Recv() (*ScriptResponse, error)
+	Send(*ScriptResponse) error
+	Recv() (*ScriptRequest, error)
 	grpc.ClientStream
 }
 
@@ -67,16 +69,25 @@ type agentServiceBidirectionalStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *agentServiceBidirectionalStreamClient) Send(m *ReceiveScript) error {
+func (x *agentServiceBidirectionalStreamClient) Send(m *ScriptResponse) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *agentServiceBidirectionalStreamClient) Recv() (*ScriptResponse, error) {
-	m := new(ScriptResponse)
+func (x *agentServiceBidirectionalStreamClient) Recv() (*ScriptRequest, error) {
+	m := new(ScriptRequest)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *agentServiceClient) SendHeartbeat(ctx context.Context, in *Heartbeat, opts ...grpc.CallOption) (*Heartbeat, error) {
+	out := new(Heartbeat)
+	err := c.cc.Invoke(ctx, AgentService_SendHeartbeat_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // AgentServiceServer is the server API for AgentService service.
@@ -85,6 +96,7 @@ func (x *agentServiceBidirectionalStreamClient) Recv() (*ScriptResponse, error) 
 type AgentServiceServer interface {
 	SendHardwareInfo(context.Context, *HardwareInfo) (*HardwareResponse, error)
 	BidirectionalStream(AgentService_BidirectionalStreamServer) error
+	SendHeartbeat(context.Context, *Heartbeat) (*Heartbeat, error)
 	mustEmbedUnimplementedAgentServiceServer()
 }
 
@@ -97,6 +109,9 @@ func (UnimplementedAgentServiceServer) SendHardwareInfo(context.Context, *Hardwa
 }
 func (UnimplementedAgentServiceServer) BidirectionalStream(AgentService_BidirectionalStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method BidirectionalStream not implemented")
+}
+func (UnimplementedAgentServiceServer) SendHeartbeat(context.Context, *Heartbeat) (*Heartbeat, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendHeartbeat not implemented")
 }
 func (UnimplementedAgentServiceServer) mustEmbedUnimplementedAgentServiceServer() {}
 
@@ -134,8 +149,8 @@ func _AgentService_BidirectionalStream_Handler(srv interface{}, stream grpc.Serv
 }
 
 type AgentService_BidirectionalStreamServer interface {
-	Send(*ScriptResponse) error
-	Recv() (*ReceiveScript, error)
+	Send(*ScriptRequest) error
+	Recv() (*ScriptResponse, error)
 	grpc.ServerStream
 }
 
@@ -143,16 +158,34 @@ type agentServiceBidirectionalStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *agentServiceBidirectionalStreamServer) Send(m *ScriptResponse) error {
+func (x *agentServiceBidirectionalStreamServer) Send(m *ScriptRequest) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *agentServiceBidirectionalStreamServer) Recv() (*ReceiveScript, error) {
-	m := new(ReceiveScript)
+func (x *agentServiceBidirectionalStreamServer) Recv() (*ScriptResponse, error) {
+	m := new(ScriptResponse)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func _AgentService_SendHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Heartbeat)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServiceServer).SendHeartbeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentService_SendHeartbeat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServiceServer).SendHeartbeat(ctx, req.(*Heartbeat))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // AgentService_ServiceDesc is the grpc.ServiceDesc for AgentService service.
@@ -165,6 +198,10 @@ var AgentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendHardwareInfo",
 			Handler:    _AgentService_SendHardwareInfo_Handler,
+		},
+		{
+			MethodName: "SendHeartbeat",
+			Handler:    _AgentService_SendHeartbeat_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

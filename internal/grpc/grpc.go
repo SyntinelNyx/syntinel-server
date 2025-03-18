@@ -11,6 +11,7 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto"
+	"github.com/SyntinelNyx/syntinel-server/internal/scripts"
 )
 
 type server struct {
@@ -38,47 +39,79 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 	return grpcServer
 }
 
-func (s *server)BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
-    ctx := stream.Context()
+func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
+	// go func() {
+	// 	for {
+	// 		req, err := stream.Recv()
+	// 		if err == io.EOF {
+	// 			log.Println("Agent closed the stream")
+	// 			break
+	// 		}
+	// 		if err != nil {
+	// 			log.Printf("Error receiving message from agent: %v", err)
+	// 			break
+	// 		}
+	// 		log.Printf("Received message from agent: %s", req.Name)
+	// 	}
+	// }()
+	ctx := stream.Context()
 
-    go func() {
-        for {
-            select {
-            case <-ctx.Done():
-                log.Println("Stream context canceled by client")
-                return
-            default:
-                req, err := stream.Recv()
-                if err == io.EOF {
-                    log.Println("Agent closed the stream")
-                    return
-                }
-                if err != nil {
-                    log.Printf("Error receiving message from agent: %v", err)
-                    return
-                }
-                log.Printf("Received message from agent: %s", req.Name)
-            }
-        }
-    }()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Stream context canceled by client")
+				return
+			default:
+				resp, err := stream.Recv()
+				if err == io.EOF {
+					log.Println("Agent closed the stream")
+					return
+				}
+				if err != nil {
+					log.Printf("Error receiving message from agent: %v", err)
+					return
+				}
+				log.Printf("Received message from agent: %s", resp.Name)
+			}
+		}
+	}()
+	for {
+		// Send file to agent
+		filePath, err := scripts.GetScript("test")
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
 
-	// Example: Sending a file to the agent
-	filePath := "./data/scripts/example.txt"
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		log.Printf("Error reading file: %v", err)
-		return err
+		file, err := os.Open(filePath.Path)
+		if err != nil {
+			log.Printf("Error opening file: %v", err)
+			return err
+		}
+		defer file.Close()
+
+		buffer := make([]byte, 1024) // Adjust buffer size as needed
+		for {
+			n, err := file.Read(buffer)
+			if err != nil && err != io.EOF {
+				log.Printf("Error reading file: %v", err)
+				break
+			}
+			if n == 0 {
+				break // End of file
+			}
+
+			err = stream.Send(&proto.ScriptRequest{
+				Name:    filePath.Name, // Replace with the actual script name if needed
+				Content: buffer[:n],
+			})
+			if err != nil {
+				log.Printf("Error sending file to agent: %v", err)
+				break
+			}
+		}
 	}
 
-	err = stream.Send(&proto.ScriptResponse{
-		Name:    "example.txt",
-		Status:  "File sent successfully",
-		Content: string(content),
-	})
-	if err != nil {
-		log.Printf("Error sending file to agent: %v", err)
-		return err
-	}
+	
 
-	return nil
 }
