@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build and push image
     runs-on: ubuntu-latest
+    env:
+      RUNNER_TOOL_CACHE: /toolcache
     container:
       image: catthehacker/ubuntu:act-latest
 
@@ -21,6 +23,14 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
@@ -37,3 +47,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             registry.syntinel.dev/syntinel-server:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
