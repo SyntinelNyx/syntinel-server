@@ -13,4 +13,6 @@
 redis_data
 *.rdb
 
+scripts
+
 syntinel-server
