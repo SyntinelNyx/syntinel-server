@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/actions"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto"
-	"github.com/SyntinelNyx/syntinel-server/internal/scripts"
 )
 
 type server struct {
@@ -40,20 +40,6 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 }
 
 func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
-	// go func() {
-	// 	for {
-	// 		req, err := stream.Recv()
-	// 		if err == io.EOF {
-	// 			log.Println("Agent closed the stream")
-	// 			break
-	// 		}
-	// 		if err != nil {
-	// 			log.Printf("Error receiving message from agent: %v", err)
-	// 			break
-	// 		}
-	// 		log.Printf("Received message from agent: %s", req.Name)
-	// 	}
-	// }()
 	ctx := stream.Context()
 
 	go func() {
@@ -78,7 +64,7 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 	}()
 	for {
 		// Send file to agent
-		filePath, err := scripts.GetScript("test")
+		filePath, err := actions.GetScript("test")
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
@@ -111,7 +97,5 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 			}
 		}
 	}
-
-	
 
 }

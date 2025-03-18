@@ -1,4 +1,4 @@
-package scripts
+package actions
 
 // Note for christain please make a new table and query to store the script information in the database.
 
@@ -7,15 +7,15 @@ import (
 	"log"
 )
 
-type ScriptInfo struct {
+type ActionsInfo struct {
 	Name        string
 	Path        string
 	Description string
 	Executable 	string
 }
 
-var scriptsMap = map[string]ScriptInfo{
-	"test": {Name: "test.sh", Path: "./data/scripts/test.sh", Description: "This is a test script", Executable: "bash"},
+var scriptsMap = map[string]ActionsInfo{
+	"test": {Name: "test.sh", Path: "./data/actions/test.sh", Description: "This is a test script", Executable: "bash"},
 }
 
 func AddScript(name, path, description, executable string) error {
@@ -23,9 +23,9 @@ func AddScript(name, path, description, executable string) error {
 		return fmt.Errorf("script with name '%s' already exists", name)
 	}
 
-	fullPath := "./data/scripts/" + path
+	fullPath := "./data/actions/" + path
 
-	scriptsMap[name] = ScriptInfo{
+	scriptsMap[name] = ActionsInfo{
 		Name:        name,
 		Path:        fullPath,
 		Description: description,
@@ -36,11 +36,11 @@ func AddScript(name, path, description, executable string) error {
 	return nil
 }
 
-func GetScript(name string) (ScriptInfo, error) {
-	script, exists := scriptsMap[name]
+func GetScript(name string) (ActionsInfo, error) {
+	action, exists := scriptsMap[name]
 	if !exists {
-		return ScriptInfo{}, fmt.Errorf("script with name '%s' does not exist", name)
+		return ActionsInfo{}, fmt.Errorf("script with name '%s' does not exist", name)
 	}
 
-	return script, nil
+	return action, nil
 }
