@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v5.27.5
-// source: internal/proto/bidirectional_comm.proto
+// source: internal/proto/agent_service.proto
 
 package proto
 
@@ -28,9 +28,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AgentServiceClient interface {
-	SendHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*HardwareResponse, error)
+	SendHardwareInfo(ctx context.Context, in *HardwareInfoRequest, opts ...grpc.CallOption) (*HardwareInfoResponse, error)
 	BidirectionalStream(ctx context.Context, opts ...grpc.CallOption) (AgentService_BidirectionalStreamClient, error)
-	SendHeartbeat(ctx context.Context, in *Heartbeat, opts ...grpc.CallOption) (*Heartbeat, error)
+	SendHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 }
 
 type agentServiceClient struct {
@@ -41,8 +41,8 @@ func NewAgentServiceClient(cc grpc.ClientConnInterface) AgentServiceClient {
 	return &agentServiceClient{cc}
 }
 
-func (c *agentServiceClient) SendHardwareInfo(ctx context.Context, in *HardwareInfo, opts ...grpc.CallOption) (*HardwareResponse, error) {
-	out := new(HardwareResponse)
+func (c *agentServiceClient) SendHardwareInfo(ctx context.Context, in *HardwareInfoRequest, opts ...grpc.CallOption) (*HardwareInfoResponse, error) {
+	out := new(HardwareInfoResponse)
 	err := c.cc.Invoke(ctx, AgentService_SendHardwareInfo_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -81,8 +81,8 @@ func (x *agentServiceBidirectionalStreamClient) Recv() (*ScriptRequest, error) {
 	return m, nil
 }
 
-func (c *agentServiceClient) SendHeartbeat(ctx context.Context, in *Heartbeat, opts ...grpc.CallOption) (*Heartbeat, error) {
-	out := new(Heartbeat)
+func (c *agentServiceClient) SendHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+	out := new(HeartbeatResponse)
 	err := c.cc.Invoke(ctx, AgentService_SendHeartbeat_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -94,9 +94,9 @@ func (c *agentServiceClient) SendHeartbeat(ctx context.Context, in *Heartbeat, o
 // All implementations must embed UnimplementedAgentServiceServer
 // for forward compatibility
 type AgentServiceServer interface {
-	SendHardwareInfo(context.Context, *HardwareInfo) (*HardwareResponse, error)
+	SendHardwareInfo(context.Context, *HardwareInfoRequest) (*HardwareInfoResponse, error)
 	BidirectionalStream(AgentService_BidirectionalStreamServer) error
-	SendHeartbeat(context.Context, *Heartbeat) (*Heartbeat, error)
+	SendHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	mustEmbedUnimplementedAgentServiceServer()
 }
 
@@ -104,13 +104,13 @@ type AgentServiceServer interface {
 type UnimplementedAgentServiceServer struct {
 }
 
-func (UnimplementedAgentServiceServer) SendHardwareInfo(context.Context, *HardwareInfo) (*HardwareResponse, error) {
+func (UnimplementedAgentServiceServer) SendHardwareInfo(context.Context, *HardwareInfoRequest) (*HardwareInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendHardwareInfo not implemented")
 }
 func (UnimplementedAgentServiceServer) BidirectionalStream(AgentService_BidirectionalStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method BidirectionalStream not implemented")
 }
-func (UnimplementedAgentServiceServer) SendHeartbeat(context.Context, *Heartbeat) (*Heartbeat, error) {
+func (UnimplementedAgentServiceServer) SendHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendHeartbeat not implemented")
 }
 func (UnimplementedAgentServiceServer) mustEmbedUnimplementedAgentServiceServer() {}
@@ -127,7 +127,7 @@ func RegisterAgentServiceServer(s grpc.ServiceRegistrar, srv AgentServiceServer)
 }
 
 func _AgentService_SendHardwareInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HardwareInfo)
+	in := new(HardwareInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func _AgentService_SendHardwareInfo_Handler(srv interface{}, ctx context.Context
 		FullMethod: AgentService_SendHardwareInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AgentServiceServer).SendHardwareInfo(ctx, req.(*HardwareInfo))
+		return srv.(AgentServiceServer).SendHardwareInfo(ctx, req.(*HardwareInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -171,7 +171,7 @@ func (x *agentServiceBidirectionalStreamServer) Recv() (*ScriptResponse, error) 
 }
 
 func _AgentService_SendHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Heartbeat)
+	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func _AgentService_SendHeartbeat_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: AgentService_SendHeartbeat_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AgentServiceServer).SendHeartbeat(ctx, req.(*Heartbeat))
+		return srv.(AgentServiceServer).SendHeartbeat(ctx, req.(*HeartbeatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -212,5 +212,5 @@ var AgentService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "internal/proto/bidirectional_comm.proto",
+	Metadata: "internal/proto/agent_service.proto",
 }

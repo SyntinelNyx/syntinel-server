@@ -4,16 +4,16 @@ package grpc;
 option go_package = "github.com/SyntinelNyx/syntinel-agent/internal/proto";
 
 service AgentService {
-  rpc SendHardwareInfo (HardwareInfo) returns (HardwareResponse);
+  rpc SendHardwareInfo (HardwareInfoRequest) returns (HardwareInfoResponse);
   rpc BidirectionalStream (stream ScriptResponse) returns (stream ScriptRequest);
-  rpc SendHeartbeat (Heartbeat) returns (Heartbeat);
+  rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
 }
 
-message HardwareInfo {
+message HardwareInfoRequest {
   string json_data = 1; // The JSON string containing hardware info
 }
 
-message HardwareResponse {
+message HardwareInfoResponse {
   string message = 1; // Response message from the server
 }
 
@@ -27,6 +27,11 @@ message ScriptResponse {
   string status = 2; // Status of the script transfer
 }
 
-message Heartbeat {
+message HeartbeatRequest {
   string status = 1; // Message to be sent
 }
+
+message HeartbeatResponse {
+  string status = 1; // Message to be sent
+}
+

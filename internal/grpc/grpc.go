@@ -18,9 +18,9 @@ type server struct {
 	proto.UnimplementedAgentServiceServer
 }
 
-func (s *server) SendHardwareInfo(ctx context.Context, req *proto.HardwareInfo) (*proto.HardwareResponse, error) {
+func (s *server) SendHardwareInfo(ctx context.Context, req *proto.HardwareInfoRequest) (*proto.HardwareInfoResponse, error) {
 	logger.Info("Received hardware info: %s", req.JsonData)
-	return &proto.HardwareResponse{Message: "Hardware info received successfully"}, nil
+	return &proto.HardwareInfoResponse{Message: "Hardware info received successfully"}, nil
 }
 
 func StartServer(grpcServer *grpc.Server) *grpc.Server {
@@ -38,6 +38,8 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 
 	return grpcServer
 }
+
+
 
 func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
 	ctx := stream.Context()
@@ -62,6 +64,7 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 			}
 		}
 	}()
+
 	// Send file to agent
 	filePath, err := actions.GetScript("test")
 	if err != nil {
