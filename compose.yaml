@@ -7,16 +7,16 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - APP_ENV=production
-      - APP_PORT=8080
-      - APP_CONFIG_PATH=/app/data/config.yaml
+      - APP_ENV=
+      - APP_PORT=
+      - APP_CONFIG_PATH=
       - REDIS_URL=redis:6379
       - DATABASE_URL=postgres://syntinel:syntinel@postgres:5432/syntinel?sslmode=disable
-      - CSRF_SECRET=DEFAULT_SECRET_CHANGE_THIS
-      - TLS_CERT_PATH=/app/data/certs/server_cert.pem
-      - TLS_KEY_PATH=/app/data/certs/server_key.pem
-      - ECDSA_PUBLIC_KEY_PATH=/app/data/ecdsa_public.pem
-      - ECDSA_PRIVATE_KEY_PATH=/app/data/ecdsa_private.pem
+      - CSRF_SECRET=
+      - TLS_CERT_PATH=
+      - TLS_KEY_PATH=
+      - ECDSA_PUBLIC_KEY_PATH=
+      - ECDSA_PRIVATE_KEY_PATH=
     ports:
       - 8080:8080
     networks:
