@@ -57,6 +57,3 @@ openssl ec -in data/ecdsa_private.pem -pubout -out data/ecdsa_public.pem
 
 # Clean up CSR file.
 rm data/server_csr.pem
-
-# Change permissions of the server key and csr to allow postgre to read them
-chown -R /srv/syntinel-server/postgres_data
