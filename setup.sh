@@ -44,7 +44,7 @@ openssl x509 -req           \
   -sha256
 
 # Change permissions of the server key and csr to allow postgre to read them
-#chmod 600 data/server_cert.pem
+chmod 600 data/server_cert.pem
 
 # Verify the generated server certificate.
 openssl verify -verbose -CAfile data/ca_cert.pem data/server_cert.pem
