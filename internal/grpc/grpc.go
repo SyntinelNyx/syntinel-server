@@ -39,8 +39,6 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 	return grpcServer
 }
 
-
-
 func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
 	ctx := stream.Context()
 
@@ -61,10 +59,12 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 					return
 				}
 				log.Printf("Received message from agent: %s", resp.Name)
+				log.Printf("Received message from agent: %s", resp.Status)
+				log.Printf("Received message from agent: %s", resp.Output)
 			}
 		}
 	}()
-
+	
 	// Send file to agent
 	filePath, err := actions.GetScript("test")
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 		n, err := file.Read(buffer)
 		if err != nil && err != io.EOF {
 			log.Printf("Error reading file: %v", err)
-			break
+			return err
 		}
 		if n == 0 {
 			break // End of file
@@ -99,5 +99,65 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 		}
 	}
 
-	return nil
+	errCh := make(chan error, 1) // Define and initialize errCh
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	// return nil
+}
+
+func (s *server) SendTrivyReport(stream proto.AgentService_SendTrivyReportServer) error {
+	ctx := stream.Context()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Stream context canceled by client")
+				return
+			default:
+				resp, err := stream.Recv()
+				if err == io.EOF {
+					log.Println("Agent closed the stream")
+					return
+				}
+				if err != nil {
+					log.Printf("Error receiving message from agent: %v", err)
+					return
+				}
+				log.Printf("Received message from agent: %s", resp.JsonData)
+				log.Printf("Received message from agent: %s", resp.Status)
+			}
+		}
+	}()
+
+	// go func() {
+	// for { // for loop for testing purposes
+		// send trivy command to agent
+		err := stream.Send(&proto.TrivyReportRequest{
+			Message: "DeepScan",
+			Path:   "./",
+			Arguements:   "test",
+		})
+		if err != nil {
+			log.Printf("Error sending command to agent: %v", err)
+			// break
+		}
+		log.Printf("Sent command to agent: %s", "DeepScan")
+	// }
+	// }()
+
+	errCh := make(chan error, 1) // Define and initialize errCh
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

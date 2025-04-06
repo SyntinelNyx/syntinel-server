@@ -22,6 +22,7 @@ const (
 	AgentService_SendHardwareInfo_FullMethodName    = "/grpc.AgentService/SendHardwareInfo"
 	AgentService_BidirectionalStream_FullMethodName = "/grpc.AgentService/BidirectionalStream"
 	AgentService_SendHeartbeat_FullMethodName       = "/grpc.AgentService/SendHeartbeat"
+	AgentService_SendTrivyReport_FullMethodName     = "/grpc.AgentService/SendTrivyReport"
 )
 
 // AgentServiceClient is the client API for AgentService service.
@@ -31,6 +32,7 @@ type AgentServiceClient interface {
 	SendHardwareInfo(ctx context.Context, in *HardwareInfoRequest, opts ...grpc.CallOption) (*HardwareInfoResponse, error)
 	BidirectionalStream(ctx context.Context, opts ...grpc.CallOption) (AgentService_BidirectionalStreamClient, error)
 	SendHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
+	SendTrivyReport(ctx context.Context, opts ...grpc.CallOption) (AgentService_SendTrivyReportClient, error)
 }
 
 type agentServiceClient struct {
@@ -90,6 +92,37 @@ func (c *agentServiceClient) SendHeartbeat(ctx context.Context, in *HeartbeatReq
 	return out, nil
 }
 
+func (c *agentServiceClient) SendTrivyReport(ctx context.Context, opts ...grpc.CallOption) (AgentService_SendTrivyReportClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AgentService_ServiceDesc.Streams[1], AgentService_SendTrivyReport_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &agentServiceSendTrivyReportClient{stream}
+	return x, nil
+}
+
+type AgentService_SendTrivyReportClient interface {
+	Send(*TrivyReportResponse) error
+	Recv() (*TrivyReportRequest, error)
+	grpc.ClientStream
+}
+
+type agentServiceSendTrivyReportClient struct {
+	grpc.ClientStream
+}
+
+func (x *agentServiceSendTrivyReportClient) Send(m *TrivyReportResponse) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *agentServiceSendTrivyReportClient) Recv() (*TrivyReportRequest, error) {
+	m := new(TrivyReportRequest)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // AgentServiceServer is the server API for AgentService service.
 // All implementations must embed UnimplementedAgentServiceServer
 // for forward compatibility
@@ -97,6 +130,7 @@ type AgentServiceServer interface {
 	SendHardwareInfo(context.Context, *HardwareInfoRequest) (*HardwareInfoResponse, error)
 	BidirectionalStream(AgentService_BidirectionalStreamServer) error
 	SendHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
+	SendTrivyReport(AgentService_SendTrivyReportServer) error
 	mustEmbedUnimplementedAgentServiceServer()
 }
 
@@ -112,6 +146,9 @@ func (UnimplementedAgentServiceServer) BidirectionalStream(AgentService_Bidirect
 }
 func (UnimplementedAgentServiceServer) SendHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendHeartbeat not implemented")
+}
+func (UnimplementedAgentServiceServer) SendTrivyReport(AgentService_SendTrivyReportServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendTrivyReport not implemented")
 }
 func (UnimplementedAgentServiceServer) mustEmbedUnimplementedAgentServiceServer() {}
 
@@ -188,6 +225,32 @@ func _AgentService_SendHeartbeat_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentService_SendTrivyReport_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AgentServiceServer).SendTrivyReport(&agentServiceSendTrivyReportServer{stream})
+}
+
+type AgentService_SendTrivyReportServer interface {
+	Send(*TrivyReportRequest) error
+	Recv() (*TrivyReportResponse, error)
+	grpc.ServerStream
+}
+
+type agentServiceSendTrivyReportServer struct {
+	grpc.ServerStream
+}
+
+func (x *agentServiceSendTrivyReportServer) Send(m *TrivyReportRequest) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *agentServiceSendTrivyReportServer) Recv() (*TrivyReportResponse, error) {
+	m := new(TrivyReportResponse)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // AgentService_ServiceDesc is the grpc.ServiceDesc for AgentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -208,6 +271,12 @@ var AgentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "BidirectionalStream",
 			Handler:       _AgentService_BidirectionalStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "SendTrivyReport",
+			Handler:       _AgentService_SendTrivyReport_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
