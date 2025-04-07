@@ -1,4 +1,11 @@
--- name: CalculateResolvedVulnerabilities :exec
+<< << << < HEAD -- name: CalculateResolvedVulnerabilities :exec
+== == == = -- name: CalculateResolvedVulnerabilities Role :exec
+-- $1: asset_id - asset the scan was intiated on
+-- $2: current_cve_list - list of cves returned by most recent scan
+>> >> >> > 8e4313b (
+    Updated DB Schema
+    AND CREATE SQL queries FOR vulnerability scan logic (untested)
+)
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
@@ -9,7 +16,14 @@ WHERE a.asset_id = $1
     )
     AND vulnerability_state != 'resolved';
 
--- name: CalculateResurfacedVulnerabilities :exec
+<< << << < HEAD -- name: CalculateResurfacedVulnerabilities :exec
+== == == = -- name: CalculateResurfacedVulnerabilities Role :exec
+-- $1: asset_id - asset the scan was intiated on
+-- $2: current_cve_list - list of cves returned by most recent scan
+>> >> >> > 8e4313b (
+    Updated DB Schema
+    AND CREATE SQL queries FOR vulnerability scan logic (untested)
+)
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
@@ -20,18 +34,36 @@ WHERE a.asset_id = $1
     )
     AND vulnerability_state = 'resolved';
 
--- name: CalculateNewVulnerabilities :exec
+<< << << < HEAD -- name: CalculateNewVulnerabilities :exec
+== == == = -- name: CalculateNewVulnerabilities Role :exec
+-- $1: asset_id - asset the scan was intiated on
+-- $2: current_cve_list - list of cves returned by most recent scan
+>> >> >> > 8e4313b (
+    Updated DB Schema
+    AND CREATE SQL queries FOR vulnerability scan logic (untested)
+)
 SELECT cve_id
 FROM unnest($2) AS current_cves(cve_id)
 WHERE cve_id NOT IN (
         SELECT avs.cve_id
         FROM asset_vulnerability_state avs
             JOIN assets a ON a.asset_id = avs.asset_id
-            JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
+            JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id << << << < HEAD
         WHERE avs.asset_id = $1
     );
 
 -- name: CalculateNotAffectedVulnerabilities :exec
+== == == =
+WHERE asset_id = $1;
+);
+
+-- name: CalculateNotAffectedVulnerabilities Role :exec
+-- $1: asset_id - asset the scan was intiated on
+-- $2: current_cve_list - list of cves returned by most recent scan
+>> >> >> > 8e4313b (
+    Updated DB Schema
+    AND CREATE SQL queries FOR vulnerability scan logic (untested)
+)
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
