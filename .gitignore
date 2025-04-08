@@ -14,5 +14,6 @@ redis_data
 *.rdb
 
 data/
+!internal/data/
 
 syntinel-server

@@ -39,15 +39,9 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	creds, err := credentials.NewServerTLSFromFile(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
-	if err != nil {
-		logger.Fatal("failed to create credentials: %v", err)
-	}
+	client := grpc.InitConnectToAgent("localhost:50051")
 
-	grpcServer := ggrpc.NewServer(ggrpc.Creds(creds))
-	go func() {
-		grpc.StartServer(grpcServer)
-	}()
+	grpc.BidirectionalStream(client)
 
 	go func() {
 		var err error
@@ -73,7 +67,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error("Error shutting down HTTP server: %v", err)
 	}
-	grpcServer.GracefulStop()
 
 	logger.Info("Shutdown complete.")
 }

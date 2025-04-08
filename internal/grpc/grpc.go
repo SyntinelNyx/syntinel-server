@@ -2,25 +2,27 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"os"
+	"time"
 
+	pb "github.com/SyntinelNyx/syntinel-server/internal/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/actions"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto"
+	"github.com/SyntinelNyx/syntinel-server/internal/data"
+	"github.com/zcalusic/sysinfo"
 )
 
 type server struct {
 	proto.UnimplementedAgentServiceServer
-}
-
-func (s *server) SendHardwareInfo(ctx context.Context, req *proto.HardwareInfoRequest) (*proto.HardwareInfoResponse, error) {
-	logger.Info("Received hardware info: %s", req.JsonData)
-	return &proto.HardwareInfoResponse{Message: "Hardware info received successfully"}, nil
 }
 
 func StartServer(grpcServer *grpc.Server) *grpc.Server {
@@ -37,6 +39,55 @@ func StartServer(grpcServer *grpc.Server) *grpc.Server {
 	}
 
 	return grpcServer
+}
+
+func InitConnectToAgent(ip_addr string) pb.AgentServiceClient {
+	// Create TLS-based credentials
+	creds, err := credentials.NewClientTLSFromFile(data.Path("x509/ca_cert.pem"), "api.syntinel.dev")
+	if err != nil {
+		log.Fatalf("failed to load credentials: %v", err)
+	}
+
+	// Establish a connection to the server
+	conn, err := grpc.NewClient(ip_addr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		log.Fatalf("Failed to connect: %v", err)
+	}
+
+	client := pb.NewAgentServiceClient(conn)
+
+	return client
+}
+
+func BidirectionalStream(client proto.AgentServiceClient) {
+	ctx := context.Background()
+
+	stream, err := client.BidirectionalStream(ctx)
+	if err != nil {
+		log.Fatalf("failed to call Control: %v", err)
+	}
+
+	// Send actions
+	for { // for loop for testing purposes
+
+
+	}
+	
+
+	// Receive responses
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("recv failed: %v", err)
+		}
+		log.Printf("Received message from agent: %s", resp.Name)
+		log.Printf("Received message from agent: %s", resp.Status)
+		log.Printf("Received message from agent: %s", resp.Output)
+	}
+
 }
 
 func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStreamServer) error {
@@ -64,7 +115,7 @@ func (s *server) BidirectionalStream(stream proto.AgentService_BidirectionalStre
 			}
 		}
 	}()
-	
+
 	// Send file to agent
 	filePath, err := actions.GetScript("test")
 	if err != nil {
@@ -138,17 +189,17 @@ func (s *server) SendTrivyReport(stream proto.AgentService_SendTrivyReportServer
 
 	// go func() {
 	// for { // for loop for testing purposes
-		// send trivy command to agent
-		err := stream.Send(&proto.TrivyReportRequest{
-			Message: "DeepScan",
-			Path:   "./",
-			Arguements:   "test",
-		})
-		if err != nil {
-			log.Printf("Error sending command to agent: %v", err)
-			// break
-		}
-		log.Printf("Sent command to agent: %s", "DeepScan")
+	// send trivy command to agent
+	err := stream.Send(&proto.TrivyReportRequest{
+		Message:    "DeepScan",
+		Path:       "./",
+		Arguements: "test",
+	})
+	if err != nil {
+		log.Printf("Error sending command to agent: %v", err)
+		// break
+	}
+	log.Printf("Sent command to agent: %s", "DeepScan")
 	// }
 	// }()
 

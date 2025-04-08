@@ -62,8 +62,8 @@ func (c *agentServiceClient) BidirectionalStream(ctx context.Context, opts ...gr
 }
 
 type AgentService_BidirectionalStreamClient interface {
-	Send(*ScriptResponse) error
-	Recv() (*ScriptRequest, error)
+	Send(*ActionsRequest) error
+	Recv() (*ActionsResponse, error)
 	grpc.ClientStream
 }
 
@@ -71,12 +71,12 @@ type agentServiceBidirectionalStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *agentServiceBidirectionalStreamClient) Send(m *ScriptResponse) error {
+func (x *agentServiceBidirectionalStreamClient) Send(m *ActionsRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *agentServiceBidirectionalStreamClient) Recv() (*ScriptRequest, error) {
-	m := new(ScriptRequest)
+func (x *agentServiceBidirectionalStreamClient) Recv() (*ActionsResponse, error) {
+	m := new(ActionsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -186,8 +186,8 @@ func _AgentService_BidirectionalStream_Handler(srv interface{}, stream grpc.Serv
 }
 
 type AgentService_BidirectionalStreamServer interface {
-	Send(*ScriptRequest) error
-	Recv() (*ScriptResponse, error)
+	Send(*ActionsResponse) error
+	Recv() (*ActionsRequest, error)
 	grpc.ServerStream
 }
 
@@ -195,12 +195,12 @@ type agentServiceBidirectionalStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *agentServiceBidirectionalStreamServer) Send(m *ScriptRequest) error {
+func (x *agentServiceBidirectionalStreamServer) Send(m *ActionsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *agentServiceBidirectionalStreamServer) Recv() (*ScriptResponse, error) {
-	m := new(ScriptResponse)
+func (x *agentServiceBidirectionalStreamServer) Recv() (*ActionsRequest, error) {
+	m := new(ActionsRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
