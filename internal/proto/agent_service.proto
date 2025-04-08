@@ -7,17 +7,28 @@ service AgentService {
   rpc SendHardwareInfo (HardwareInfoRequest) returns (HardwareInfoResponse);
   rpc BidirectionalStream (stream ActionsRequest) returns (stream ActionsResponse);
   rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+  rpc SendFile (SendFileRequest) returns (SendFileResponse);
+}
+
+message HardwareInfoRequest {
+  string json_data = 1; // The JSON string containing hardware info
+}
+
+message HardwareInfoResponse {
+  string message = 1; // Response message from the server
 }
 
 message ActionsRequest {
-  string name = 1; // Name of the script
-  bytes content = 2; // The script to be executed
+  string name = 1; // Name of the action
+  string command = 2; // The command to be executed
+  string arguments = 3; // Arguments for the command
+  bytes content = 4; // The content of the script or binary
 }
 
 message ActionsResponse {
   string name = 1; // Name of the script
   string status = 2; // Status of the script transfer
-  string output = 3; // Output of the script
+  string output = 3; // Output of the Actions
   string error = 4; // Error message if any
 }
 
@@ -27,4 +38,13 @@ message HeartbeatRequest {
 
 message HeartbeatResponse {
   string status = 1; // Message to be sent
+}
+
+message SendFileRequest {
+  string file_name = 1; // Name of the file to be sent
+  bytes content = 2; // Content of the file
+}
+
+message SendFileResponse {
+  string status = 1; // Status of the file transfer
 }
