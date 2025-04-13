@@ -14,10 +14,7 @@ services:
       - REDIS_URL=
       - DATABASE_URL=
       - CSRF_SECRET=
-      - TLS_CERT_PATH=
-      - TLS_KEY_PATH=
-      - ECDSA_PUBLIC_KEY_PATH=
-      - ECDSA_PRIVATE_KEY_PATH=
+      - DATA_PATH=
     ports:
       - 8080:8080
     volumes:
