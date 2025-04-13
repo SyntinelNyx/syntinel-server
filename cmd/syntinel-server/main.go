@@ -5,11 +5,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
-
-	ggrpc "google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
@@ -35,25 +33,18 @@ func main() {
 
 	router := router.SetupRouter(queries, config.AllowedOrigins)
 	server := config.SetupServer(port, router, flags)
+	grpc.LoadCreds()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	creds, err := credentials.NewServerTLSFromFile(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
-	if err != nil {
-		logger.Fatal("failed to create credentials: %v", err)
-	}
-
-	grpcServer := ggrpc.NewServer(ggrpc.Creds(creds))
-	go func() {
-		grpc.StartServer(grpcServer)
-	}()
-
+	certPath := filepath.Join(os.Getenv("DATA_PATH"), "server_cert.pem")
+	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "server_key.pem")
 	go func() {
 		var err error
 		if flags.Environment == "development" {
 			logger.Info("HTTP server listening on %s with TLS...", port)
-			err = server.ListenAndServeTLS(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
+			err = server.ListenAndServeTLS(certPath, keyPath)
 		} else if flags.Environment == "production" {
 			logger.Info("HTTP server listening on %s...", port)
 			err = server.ListenAndServe()
@@ -73,7 +64,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error("Error shutting down HTTP server: %v", err)
 	}
-	grpcServer.GracefulStop()
 
 	logger.Info("Shutdown complete.")
 }

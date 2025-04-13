@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -71,7 +72,8 @@ func generateAccessToken(accountId driver.Value, accountType string) (string, er
 		},
 	}
 
-	privateKey, err := key.Load(os.Getenv("ECDSA_PRIVATE_KEY_PATH"), key.PrivateKey)
+	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "ecdsa_private.pem")
+	privateKey, err := key.Load(keyPath, key.PrivateKey)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +93,8 @@ func validateAccessToken(tokenString string) (*Claims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		publicKey, err := key.Load(os.Getenv("ECDSA_PUBLIC_KEY_PATH"), key.PublicKey)
+		keyPath := filepath.Join(os.Getenv("DATA_PATH"), "ecdsa_public.pem")
+		publicKey, err := key.Load(keyPath, key.PublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("could not load public key: %v", err)
 		}

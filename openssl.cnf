@@ -10,12 +10,13 @@ attributes = req_attributes
 basicConstraints        = critical,CA:TRUE
 subjectKeyIdentifier    = hash
 authorityKeyIdentifier  = keyid:always,issuer:always
-keyUsage                = critical,keyCertSign
+keyUsage                = critical,keyCertSign, cRLSign
 
 [test_server]
 basicConstraints        = critical,CA:FALSE
 subjectKeyIdentifier    = hash
 keyUsage                = critical,digitalSignature,keyEncipherment,keyAgreement
+extendedKeyUsage        = serverAuth
 subjectAltName          = @server_alt_names
 
 [server_alt_names]
