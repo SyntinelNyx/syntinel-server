@@ -8,17 +8,11 @@ import (
 
 func Command(target string) {
 
-	// commands := []*controlpb.ControlMessage{
-	// 	{
-	// 		Command: "exec-script",
-	// 		Payload: "test.sh",
-	// 	},
-	// }
-
 	commands := []*controlpb.ControlMessage{
 		{
-			Command: "exec-binary",
-			Payload: "trivy fs -f json --scanners vuln /",
+			Command: "exec",
+			// Payload: "test.sh",
+			Payload: "trivy fs / -f json --scanners vuln --output result.json",
 		},
 	}
 
