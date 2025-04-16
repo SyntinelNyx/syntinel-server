@@ -8,6 +8,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Asset struct {
+	AssetID   pgtype.UUID
+	AssetName string
+	AssetOs   string
+}
+
+type AssetVulnerabilityState struct {
+	ScanResultID       pgtype.UUID
+	ScanID             pgtype.UUID
+	AssetID            pgtype.UUID
+	VulnerabilityID    pgtype.UUID
+	VulnerabilityState interface{}
+}
+
 type IamAccount struct {
 	AccountID       pgtype.UUID
 	RootAccountID   pgtype.UUID
@@ -61,4 +75,20 @@ type RootAccount struct {
 	CreatedAt       pgtype.Int8
 	UpdatedAt       pgtype.Int8
 	EmailVerifiedAt pgtype.Int8
+}
+
+type Scan struct {
+	ScanID   pgtype.UUID
+	ScanDate pgtype.Timestamptz
+	Scanner  pgtype.Text
+}
+
+type Vulnerability struct {
+	VulnerabilityID          pgtype.UUID
+	CveID                    string
+	VulnerabilityName        string
+	VulnerabilityDescription pgtype.Text
+	VulnerabilitySeverity    pgtype.Text
+	CvssScore                pgtype.Numeric
+	Reference                []string
 }
