@@ -3,9 +3,15 @@ package strategies
 import (
 	"errors"
 	"fmt"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies/trivy"
 )
 
 var registeredScanners = make(map[string]Scanner)
+
+func init() {
+	RegisterScanner(&trivy.TrivyScanner{})
+}
 
 func RegisterScanner(scannerToAdd Scanner) error {
 	if scannerToAdd == nil || scannerToAdd.Name() == "" {
