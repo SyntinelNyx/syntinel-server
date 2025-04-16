@@ -12,7 +12,7 @@ services:
       - APP_PORT=
       - APP_CONFIG_PATH=
       - REDIS_URL=
-      - DATABASE_URL=
+      - DATABASE_URL=postgres://${POSTGRESQL_USER}:${POSTGRESQL_PASSWORD}@postgres:5432/${POSTGRESQL_DB}?sslmode=disable
       - CSRF_SECRET=
       - DATA_PATH=
     ports:
@@ -34,9 +34,9 @@ services:
     container_name: postgres
     image: postgres:latest
     environment:
-      - POSTGRES_USER=
-      - POSTGRES_PASSWORD=
-      - POSTGRES_DB=
+      POSTGRES_USER: ${POSTGRESQL_USER}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRESQL_DB}
     ports:
       - 5432:5432
     volumes:
