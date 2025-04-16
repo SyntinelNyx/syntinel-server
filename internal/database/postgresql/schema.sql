@@ -77,15 +77,15 @@ CREATE TABLE IF NOT EXISTS iam_user_permissions (
   FOREIGN KEY (permission_id) REFERENCES permissions (permission_id)
 );
 
-CREATE TABLE assets (
-  asset_id UUID NOT NULL,
+CREATE TABLE IF NOT EXISTS assets (
+  asset_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   asset_name VARCHAR(255) NOT NULL,
   asset_OS VARCHAR(255) NOT NULL,
   PRIMARY KEY (asset_id)
 );
 
-CREATE TABLE vulnerabilities (
-  vulnerability_id UUID NOT NULL,
+CREATE TABLE IF NOT EXISTS vulnerabilities (
+  vulnerability_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   cve_id VARCHAR(50) NOT NULL,
   vulnerability_name VARCHAR(255) NOT NULL,
   vulnerability_description TEXT,
@@ -95,8 +95,8 @@ CREATE TABLE vulnerabilities (
   PRIMARY KEY(vulnerability_id)
 );
 
-CREATE TABLE scans (
-  scan_id UUID NOT NULL,
+CREATE TABLE IF NOT EXISTS scans (
+  scan_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   scanner VARCHAR(255),
   PRIMARY KEY(scan_id)
@@ -104,8 +104,8 @@ CREATE TABLE scans (
 
 CREATE TYPE vuln_state AS ENUM('New', 'Active', 'Resolved', 'Resurfaced');
 
-CREATE TABLE asset_vulnerability_state (
-  scan_result_id UUID NOT NULL,
+CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
+  scan_result_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   scan_id UUID REFERENCES scans(scan_id),
   asset_id UUID REFERENCES assets(asset_id),
   vulnerability_id UUID REFERENCES vulnerabilities(vulnerability_id),

@@ -1,6 +1,4 @@
--- name: CalculateResolvedVulnerabilities Role :exec
--- $1: asset_id - asset the scan was intiated on
--- $2: current_cve_list - list of cves returned by most recent scan
+-- name: CalculateResolvedVulnerabilities :exec
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
@@ -11,9 +9,7 @@ WHERE a.asset_id = $1
     )
     AND vulnerability_state != 'resolved';
 
--- name: CalculateResurfacedVulnerabilities Role :exec
--- $1: asset_id - asset the scan was intiated on
--- $2: current_cve_list - list of cves returned by most recent scan
+-- name: CalculateResurfacedVulnerabilities :exec
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
@@ -24,9 +20,7 @@ WHERE a.asset_id = $1
     )
     AND vulnerability_state = 'resolved';
 
--- name: CalculateNewVulnerabilities Role :exec
--- $1: asset_id - asset the scan was intiated on
--- $2: current_cve_list - list of cves returned by most recent scan
+-- name: CalculateNewVulnerabilities :exec
 SELECT cve_id
 FROM unnest($2) AS current_cves(cve_id)
 WHERE cve_id NOT IN (
@@ -34,12 +28,10 @@ WHERE cve_id NOT IN (
         FROM asset_vulnerability_state avs
             JOIN assets a ON a.asset_id = avs.asset_id
             JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
-        WHERE asset_id = $1;
-);
+        WHERE avs.asset_id = $1
+    );
 
--- name: CalculateNotAffectedVulnerabilities Role :exec
--- $1: asset_id - asset the scan was intiated on
--- $2: current_cve_list - list of cves returned by most recent scan
+-- name: CalculateNotAffectedVulnerabilities :exec
 SELECT avs.vulnerability_id
 FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
@@ -50,12 +42,9 @@ WHERE a.asset_id = $1
     )
     AND vulnerability_state != 'resolved';
 
--- name: UpdatePreviouslySeenVulnerabilitiesOnAsset
--- $1: asset_id - asset the scan was initiated on
--- $2: scan_id - relevant scan
--- $3: current_cve_list - list of cves returned by most recent scan
+-- name: UpdatePreviouslySeenVulnerabilities :exec
 WITH current_vulns AS (
-    SELECT unnest($3) AS cve_id
+    SELECT unnest(@CVE_list::text []) AS cve_id
 )
 UPDATE asset_vulnerability_state avs
 SET scan_id = $2,
