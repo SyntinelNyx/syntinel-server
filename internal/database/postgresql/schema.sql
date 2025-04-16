@@ -86,11 +86,11 @@ CREATE TABLE IF NOT EXISTS assets (
 
 CREATE TABLE IF NOT EXISTS vulnerabilities (
   vulnerability_id UUID NOT NULL DEFAULT uuid_generate_v4(),
-  cve_id VARCHAR(50) NOT NULL,
+  cve_id VARCHAR(50) UNIQUE NOT NULL,
   vulnerability_name VARCHAR(255) NOT NULL,
   vulnerability_description TEXT,
   vulnerability_severity VARCHAR(50),
-  cvss_score DECIMAL(3, 2),
+  cvss_score DECIMAL(4, 2),
   reference TEXT [],
   PRIMARY KEY(vulnerability_id)
 );
@@ -102,7 +102,13 @@ CREATE TABLE IF NOT EXISTS scans (
   PRIMARY KEY(scan_id)
 );
 
-CREATE TYPE vuln_state AS ENUM('New', 'Active', 'Resolved', 'Resurfaced');
+-- https://stackoverflow.com/questions/7624919/check-if-a-user-defined-type-already-exists-in-postgresql
+-- Why is this the simpliest way? - Chris
+DO $$ BEGIN CREATE TYPE vuln_state AS ENUM('New', 'Active', 'Resolved', 'Resurfaced');
+EXCEPTION
+WHEN duplicate_object THEN NULL;
+END $$;
+
 
 CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
   scan_result_id UUID NOT NULL DEFAULT uuid_generate_v4(),
