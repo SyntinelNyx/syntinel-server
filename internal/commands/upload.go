@@ -11,20 +11,20 @@ import (
 )
 
 func Upload(target string, filepaths string) {
-    // Extract the file name from the filepath
-    name := filepath.Base(filepaths)
+	// Extract the file name from the filepath
+	name := filepath.Base(filepaths)
 
-    // Open the file
-    file, err := os.Open(filepaths)
-    if err != nil {
-        logger.Error("Error opening file: %v", err)
-        return
-    }
-    defer file.Close()
+	// Open the file
+	file, err := os.Open(filepaths)
+	if err != nil {
+		logger.Error("Error opening file: %v", err)
+		return
+	}
+	defer file.Close()
 
 	// var commands []*controlpb.ControlMessage
 
-	buffer := make([]byte, 2048)
+	buffer := make([]byte, 64*1024)
 	for {
 		n, err := file.Read(buffer)
 		if err != nil && err != io.EOF {
@@ -52,3 +52,4 @@ func Upload(target string, filepaths string) {
 	}
 
 }
+

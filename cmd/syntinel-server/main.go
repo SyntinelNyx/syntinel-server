@@ -40,7 +40,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		commands.Upload("localhost:50051", "./data/trivy")
+		commands.Upload("localhost:50051", "./data/test.sh")
 		commands.Command("localhost:50051")
 	}()
 
