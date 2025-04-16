@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
@@ -37,6 +38,11 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		commands.Upload("localhost:50051", "./data/trivy")
+		commands.Command("localhost:50051")
+	}()
 
 	certPath := filepath.Join(os.Getenv("DATA_PATH"), "server_cert.pem")
 	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "server_key.pem")
