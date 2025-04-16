@@ -19,8 +19,10 @@ func MockGRPCOutput() (string, error) {
 
 func TestTrivyImplementation(t *testing.T) {
 	scanner, err := GetScanner("trivy")
-
 	assert.NoError(t, err)
+
+	assert.Equal(t, "trivy", scanner.Name())
+
 	jsonOutput, err := MockGRPCOutput()
 	assert.NoError(t, err)
 	vulnerabilities, err := scanner.ParseResults(jsonOutput)
@@ -31,5 +33,13 @@ func TestTrivyImplementation(t *testing.T) {
 		t.Logf("%s", vulnerabilities[i].CVE_ID)
 	}
 	t.Logf("Total Vulns: %d", len(vulnerabilities))
+
+	payload, err := scanner.CalculateCommand("linux", "/", scanner.DefaultFlags())
+	assert.NoError(t, err)
+	t.Logf("Payload: %s", payload)
+
+	_, err = scanner.CalculateCommand("windows", "/", scanner.DefaultFlags())
+	assert.Error(t, err)
+	t.Logf("Err: %s", err)
 
 }

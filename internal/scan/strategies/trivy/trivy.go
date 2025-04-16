@@ -2,6 +2,7 @@ package trivy
 
 import (
 	"encoding/json"
+	"fmt"
 
 	base "github.com/SyntinelNyx/syntinel-server/internal/scan/strategies/base"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
@@ -33,7 +34,15 @@ type TrivyOutput struct {
 }
 
 func (t *TrivyScanner) Name() string {
-	return "trivy"
+	if t.BaseScanner.ScannerName == "" {
+		t.BaseScanner.Name("trivy")
+	}
+
+	return t.BaseScanner.ScannerName
+}
+
+func (t *TrivyScanner) CalculateCommand(OS string, filePath string, flags interface{}) (string, error) {
+	return t.BaseScanner.CalculateCommand(OS, filePath, flags, t)
 }
 
 func (t *TrivyScanner) DefaultFlags() interface{} {
@@ -59,9 +68,16 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 	}
 
 	var results []vuln.Vulnerability
+	seenCVE := make(map[string]struct{})
 
 	for _, result := range output.Results {
 		for _, vulnData := range result.Vulnerabilities {
+			if _, exists := seenCVE[vulnData.VulnerabilityID]; exists {
+				continue
+			}
+
+			seenCVE[vulnData.VulnerabilityID] = struct{}{}
+
 			cvssScore := GetCVSSScore(map[string]struct{ Score float64 }(vulnData.CVSS))
 			vuln := vuln.Vulnerability{
 				CVE_ID:                   vulnData.VulnerabilityID,
@@ -80,7 +96,7 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 }
 
 func (t *TrivyScanner) PayloadForLinux() (string, error) {
-	payload := "trivy fs %s -f json --scanners vuln"
+	payload := fmt.Sprintf("trivy fs %s -f json --scanners vuln", t.FilePath)
 
 	return payload, nil
 }
