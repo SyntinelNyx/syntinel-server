@@ -2,4 +2,5 @@ cors:
   allowed_origins:
     - "https://syntinel.dev"
     - "https://www.syntinel.dev"
+    - "https://api.syntinel.dev"
     - "https://dashboard.syntinel.dev"
