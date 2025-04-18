@@ -18,7 +18,7 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ~/syntinel-server/:/app/data/
+      - syntinel_data:/app/data/
     restart: always
 
   redis:
@@ -27,7 +27,7 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - ~/syntinel-server/redis_data:/data
+      - redis_data:/data
     restart: always
 
   postgres:
@@ -44,4 +44,6 @@ services:
     restart: always
 
 volumes:
+  syntinel_data:
+  redis_data:
   postgres_data:
