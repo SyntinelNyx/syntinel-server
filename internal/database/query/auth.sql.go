@@ -15,7 +15,7 @@ const createRootAccount = `-- name: CreateRootAccount :one
 INSERT INTO root_accounts (
   email, username, password_hash, created_at, updated_at, email_verified_at
 ) VALUES (
-  $1, $2, $3, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()), NULL
+  $1, $2, $3, NOW(), NOW(), NULL
 )
 RETURNING account_id, email, username, password_hash, created_at, updated_at, email_verified_at
 `
@@ -42,7 +42,7 @@ func (q *Queries) CreateRootAccount(ctx context.Context, arg CreateRootAccountPa
 }
 
 const getIAMAccountByEmail = `-- name: GetIAMAccountByEmail :one
-SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at, is_deleted FROM iam_accounts
 WHERE email = $1
 `
 
@@ -59,12 +59,13 @@ func (q *Queries) GetIAMAccountByEmail(ctx context.Context, email string) (IamAc
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.IsDeleted,
 	)
 	return i, err
 }
 
 const getIAMAccountById = `-- name: GetIAMAccountById :one
-SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts 
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at, is_deleted FROM iam_accounts 
 WHERE account_id = $1
 `
 
@@ -81,12 +82,13 @@ func (q *Queries) GetIAMAccountById(ctx context.Context, accountID pgtype.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.IsDeleted,
 	)
 	return i, err
 }
 
 const getIAMAccountByUsername = `-- name: GetIAMAccountByUsername :one
-SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at FROM iam_accounts 
+SELECT account_id, root_account_id, email, username, password_hash, account_status, created_at, updated_at, email_verified_at, is_deleted FROM iam_accounts 
 WHERE username = $1
 `
 
@@ -103,6 +105,7 @@ func (q *Queries) GetIAMAccountByUsername(ctx context.Context, username string) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerifiedAt,
+		&i.IsDeleted,
 	)
 	return i, err
 }
