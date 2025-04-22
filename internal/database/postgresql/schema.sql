@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS environment_assets (
 
 CREATE TABLE IF NOT EXISTS permission_templates (
   template_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  component_name VARCHAR(50),
+  component_name VARCHAR(50) UNIQUE,
   capabilities TEXT[]
 );
 INSERT INTO permission_templates (component_name, capabilities)
@@ -177,36 +177,37 @@ CREATE TABLE IF NOT EXISTS vulnerability_data (
 );
 
 CREATE TABLE IF NOT EXISTS vulnerability_state_history (
-  history_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  history_id UUID DEFAULT uuid_generate_v4(),
   vuln_data_id UUID NOT NULL,
   vulnerability_state VULNSTATE NOT NULL DEFAULT 'New',
   state_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   root_account_id UUID NOT NULL,
+  PRIMARY KEY (history_id, state_changed_at),
   FOREIGN KEY (vuln_data_id) REFERENCES vulnerability_data (vulnerability_data_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('vulnerability_state_history', 'state_changed_at', if_not_exists => TRUE);
+SELECT create_hypertable('vulnerability_state_history', by_range('state_changed_at'), if_not_exists => TRUE, migrate_data => TRUE);
 
 CREATE TABLE IF NOT EXISTS scans (
-  scan_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  scan_id UUID DEFAULT uuid_generate_v4(),
   root_account_id UUID NOT NULL,
-  scanner_name VARCHAR(255) NOT NULL UNIQUE,
+  scanner_name VARCHAR(255) NOT NULL,
   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (scan_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
 
--- Convert to hypertable
-SELECT create_hypertable('scans', 'scan_date', if_not_exists => TRUE);
 
 CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
-  scan_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  scan_result_id UUID DEFAULT uuid_generate_v4(),
   root_account_id UUID NOT NULL,
   scan_id UUID NOT NULL,
   asset_id UUID NOT NULL,
   vulnerability_id UUID NOT NULL,
   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (scan_result_id, scan_date),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
   FOREIGN KEY (scan_id) REFERENCES scans (scan_id),
   FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
@@ -214,7 +215,8 @@ CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('asset_vulnerability_state', 'scan_date', if_not_exists => TRUE);
+SELECT create_hypertable('asset_vulnerability_state', by_range('scan_date'), if_not_exists => TRUE, migrate_data => TRUE);
+
 
 CREATE TABLE IF NOT EXISTS telemetry_subjects (
   telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
@@ -236,6 +238,8 @@ CREATE TABLE IF NOT EXISTS telemetry (
   FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
 );
 
+SELECT create_hypertable('telemetry', by_range('scan_time'), if_not_exists => TRUE, migrate_data => TRUE);
+
 CREATE TABLE IF NOT EXISTS telemetry_asset (
   telemetry_id UUID NOT NULL,
   asset_id UUID NOT NULL,
@@ -244,5 +248,3 @@ CREATE TABLE IF NOT EXISTS telemetry_asset (
   FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects (telemetry_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
-
-SELECT create_hypertable('telemetry', 'scan_time', if_not_exists => TRUE);
