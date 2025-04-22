@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"

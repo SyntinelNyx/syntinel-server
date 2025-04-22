@@ -6,9 +6,9 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/lib/pq"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
@@ -23,6 +23,10 @@ func RunMigration() {
 		logger.Fatal("Failed to connect to the database: %v", err)
 	}
 	defer db.Close()
+
+	if idx := strings.IndexByte(schema, '\n'); idx != -1 {
+		schema = schema[idx+1:]
+	}
 
 	_, err = db.Exec(schema)
 	if err != nil {
