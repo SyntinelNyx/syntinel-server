@@ -1,38 +1,34 @@
 package commands
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
-	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 )
 
-func Upload(target string, filepaths string) {
-	// Extract the file name from the filepath
+func Upload(target string, filepaths string) ([]*controlpb.ControlResponse, error) {
 	name := filepath.Base(filepaths)
 
-	// Open the file
 	file, err := os.Open(filepaths)
 	if err != nil {
-		logger.Error("Error opening file: %v", err)
-		return
+		return nil, fmt.Errorf("error opening file: %v", err)
+
 	}
 	defer file.Close()
 
-	// var commands []*controlpb.ControlMessage
-
-	buffer := make([]byte, 64*1024)
+	var response []*controlpb.ControlResponse
+	buffer := make([]byte, 1024*1024)
 	for {
 		n, err := file.Read(buffer)
 		if err != nil && err != io.EOF {
-			logger.Info("Error reading file: %v", err)
-			return
+			return nil, fmt.Errorf("error reading file: %v", err)
 		}
 		if n == 0 {
-			break // End of file
+			break
 		}
 
 		commands := []*controlpb.ControlMessage{
@@ -43,13 +39,11 @@ func Upload(target string, filepaths string) {
 			},
 		}
 
-		// Send the command to the target agent
-		request := grpc.Send(target, commands)
-		if request == nil {
-			logger.Error("Failed to send command to agent %s", target)
-			return
+		response, err = grpc.Send(target, commands)
+		if err != nil {
+			return nil, fmt.Errorf("failed to send command to agent %s", target)
 		}
 	}
 
+	return response, nil
 }
-
