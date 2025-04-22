@@ -32,7 +32,6 @@ CREATE TABLE IF NOT EXISTS iam_accounts (
 
 CREATE TABLE IF NOT EXISTS system_information (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
   hostname TEXT,
   uptime BIGINT,
   boot_time BIGINT,
@@ -46,17 +45,14 @@ CREATE TABLE IF NOT EXISTS system_information (
   virtualization_system TEXT,
   virtualization_role TEXT,
   host_id TEXT,
-
   cpu_vendor_id TEXT,
   cpu_cores INTEGER,
   cpu_model_name TEXT,
   cpu_mhz DOUBLE PRECISION,
   cpu_cache_size INTEGER,
-
   memory BIGINT,
   disk BIGINT,
-
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS assets (
@@ -64,7 +60,7 @@ CREATE TABLE IF NOT EXISTS assets (
   ip_address INET NOT NULL,
   sysinfo_id UUID NOT NULL,
   root_account_id UUID NOT NULL,
-  registered_at TIMESTAMPTZ DEFAULT now(),
+  registered_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (sysinfo_id) REFERENCES system_information (id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
@@ -160,11 +156,12 @@ CREATE TABLE IF NOT EXISTS vulnerability_state_history (
 );
 
 -- Convert to hypertable
--- SELECT create_hypertable(
---     'vulnerability_state_history',
---     'state_changed_at',
---     if_not_exists => TRUE
---   );
+SELECT create_hypertable(
+    'vulnerability_state_history',
+    'state_changed_at',
+    if_not_exists => TRUE
+  );
+
 
 CREATE TABLE IF NOT EXISTS scans (
   scan_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -175,54 +172,55 @@ CREATE TABLE IF NOT EXISTS scans (
 );
 
 -- Convert to hypertable
--- SELECT create_hypertable('scans', 'scan_date', if_not_exists => TRUE);
---
--- CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
---   scan_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
---   root_account_id UUID NOT NULL,
---   scan_id UUID NOT NULL,
---   asset_id UUID NOT NULL,
---   vulnerability_id UUID NOT NULL,
---   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
---   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
---   FOREIGN KEY (scan_id) REFERENCES scans (scan_id),
---   FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
---   FOREIGN KEY (vulnerability_id) REFERENCES vulnerability_data (vulnerability_data_id)
--- );
---
--- -- Convert to hypertable
--- SELECT create_hypertable(
---     'asset_vulnerability_state',
---     'scan_date',
---     if_not_exists => TRUE
---   );
+SELECT create_hypertable('scans', 'scan_date', if_not_exists => TRUE);
+
+CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
+  scan_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  root_account_id UUID NOT NULL,
+  scan_id UUID NOT NULL,
+  asset_id UUID NOT NULL,
+  vulnerability_id UUID NOT NULL,
+  scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
+  FOREIGN KEY (scan_id) REFERENCES scans (scan_id),
+  FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
+  FOREIGN KEY (vulnerability_id) REFERENCES vulnerability_data (vulnerability_data_id)
+);
+
+-- Convert to hypertable
+SELECT create_hypertable(
+    'asset_vulnerability_state',
+    'scan_date',
+    if_not_exists => TRUE
+  );
 
 CREATE TABLE IF NOT EXISTS telemetry_subjects (
-    telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 );
 
 CREATE TABLE IF NOT EXISTS telemetry (
-    telemetry_id UUID NOT NULL,
-    scan_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-    cpu_usage FLOAT NOT NULL,
-    mem_total BIGINT NOT NULL,
-    mem_available BIGINT NOT NULL,
-    mem_used BIGINT NOT NULL,
-    mem_used_percent FLOAT NOT NULL,
-    disk_total BIGINT NOT NULL,
-    disk_free BIGINT NOT NULL,
-    disk_used BIGINT NOT NULL,
-    disk_used_percent FLOAT NOT NULL,
-    PRIMARY KEY (scan_time, telemetry_id),
-    FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
+  telemetry_id UUID NOT NULL,
+  scan_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  cpu_usage FLOAT NOT NULL,
+  mem_total BIGINT NOT NULL,
+  mem_available BIGINT NOT NULL,
+  mem_used BIGINT NOT NULL,
+  mem_used_percent FLOAT NOT NULL,
+  disk_total BIGINT NOT NULL,
+  disk_free BIGINT NOT NULL,
+  disk_used BIGINT NOT NULL,
+  disk_used_percent FLOAT NOT NULL,
+  PRIMARY KEY (scan_time, telemetry_id),
+  FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
 );
 
 CREATE TABLE IF NOT EXISTS telemetry_asset (
-    telemetry_id UUID NOT NULL,
-    asset_id UUID NOT NULL,
-    root_account_id UUID NOT NULL,
-    PRIMARY KEY (telemetry_id, asset_id),
-    FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects (telemetry_id),
-    FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
+  telemetry_id UUID NOT NULL,
+  asset_id UUID NOT NULL,
+  root_account_id UUID NOT NULL,
+  PRIMARY KEY (telemetry_id, asset_id),
+  FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects (telemetry_id),
+  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
+
 SELECT create_hypertable('telemetry', 'scan_time', if_not_exists => TRUE);
