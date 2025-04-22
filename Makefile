@@ -12,6 +12,4 @@ test_coverage:
 clean:
 	@rm ./syntinel-server
 proto:
-	protoc --go_out=./ --go_opt=paths=source_relative \
-	--go-grpc_out=./ --go-grpc_opt=paths=source_relative \
-	./internal/proto/hardware_info.proto
+	@protoc --go_out=. --go-grpc_out=. internal/proto/control.proto

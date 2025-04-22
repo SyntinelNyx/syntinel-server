@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package control;
+
+option go_package = "./internal/proto/controlpb";
+
+service AgentService {
+  rpc Control(stream ControlMessage) returns (stream ControlResponse);
+}
+
+message ControlMessage {
+  string command = 1;
+  string payload = 2;
+  bytes misc = 3;
+}
+
+message ControlResponse {
+  string result = 1;
+  string status = 2;
+}
