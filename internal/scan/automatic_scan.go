@@ -16,17 +16,17 @@ func InitalizeScheduler(h *Handler) error {
 		return fmt.Errorf("error reading config file: %s", err)
 	}
 
-	defaultScanner := viper.GetString("default_scanner")
+	defaultScanner := viper.GetString("scan.default")
 	if defaultScanner == "" {
 		return fmt.Errorf("error default scanner undefined")
 	}
 
-	time, err := time.Parse("3:04 PM", viper.GetString("time"))
+	time, err := time.Parse("3:04 PM", viper.GetString("scan.time"))
 	if err != nil {
 		return fmt.Errorf("error reading reading time: %s", err)
 	}
 
-	frequency := viper.GetString("frequency")
+	frequency := viper.GetString("scan.frequency")
 	if frequency != "" {
 		return fmt.Errorf("error frequency undefined")
 	}
