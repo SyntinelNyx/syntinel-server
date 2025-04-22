@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/agent"
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/limiter"
@@ -60,9 +61,12 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		apiRouter.Group(func(subRouter chi.Router) {
 			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 30))
 
+			agentHandler := agent.NewHandler(r.queries)
+
 			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
 				response.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm A Teapot!"})
 			})
+			subRouter.Post("/agent/enroll", agentHandler.Enroll)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
