@@ -16,6 +16,9 @@ WITH inserted_role AS (
     INSERT INTO roles (role_name)
     VALUES ($1)
     RETURNING role_id
+    INSERT INTO roles (role_name)
+    VALUES ($1)
+    RETURNING role_id
 ),
 inserted_permission AS (
     INSERT INTO permissions (
@@ -31,7 +34,24 @@ inserted_permission AS (
     VALUES ($2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING permission_id
 )
+    INSERT INTO permissions (
+            is_administrator,
+            view_assets,
+            manage_assets,
+            view_modules,
+            create_modules,
+            manage_modules,
+            view_scans,
+            start_scans
+        )
+    VALUES ($2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING permission_id
+)
 INSERT INTO roles_permissions (role_id, permission_id)
+SELECT inserted_role.role_id,
+    inserted_permission.permission_id
+FROM inserted_role,
+    inserted_permission
 SELECT inserted_role.role_id,
     inserted_permission.permission_id
 FROM inserted_role,
@@ -69,7 +89,10 @@ const assignRoleToUser = `-- name: AssignRoleToUser :exec
 INSERT INTO iam_user_roles (iam_account_id, role_id)
 SELECT ia.account_id,
     r.role_id
+SELECT ia.account_id,
+    r.role_id
 FROM iam_accounts ia
+    JOIN roles r ON r.role_name = $1
     JOIN roles r ON r.role_name = $1
 WHERE ia.username = $2
 `
@@ -85,6 +108,9 @@ func (q *Queries) AssignRoleToUser(ctx context.Context, arg AssignRoleToUserPara
 }
 
 const getAllRoles = `-- name: GetAllRoles :many
+SELECT role_name
+FROM roles
+WHERE is_deleted = FALSE
 SELECT role_name
 FROM roles
 WHERE is_deleted = FALSE
@@ -114,6 +140,9 @@ const getRoleByName = `-- name: GetRoleByName :one
 SELECT role_id, role_name, is_deleted
 FROM roles
 WHERE role_name = $1
+SELECT role_id, role_name, is_deleted
+FROM roles
+WHERE role_name = $1
 `
 
 func (q *Queries) GetRoleByName(ctx context.Context, roleName string) (Role, error) {
@@ -124,6 +153,11 @@ func (q *Queries) GetRoleByName(ctx context.Context, roleName string) (Role, err
 }
 
 const getRolePermissions = `-- name: GetRolePermissions :one
+SELECT p.permission_id, p.is_administrator, p.view_assets, p.manage_assets, p.view_modules, p.create_modules, p.manage_modules, p.view_scans, p.start_scans
+FROM roles r
+    JOIN roles_permissions rp ON r.role_id = rp.role_id
+    JOIN permissions p ON rp.permission_id = p.permission_id
+WHERE r.role_name = $1
 SELECT p.permission_id, p.is_administrator, p.view_assets, p.manage_assets, p.view_modules, p.create_modules, p.manage_modules, p.view_scans, p.start_scans
 FROM roles r
     JOIN roles_permissions rp ON r.role_id = rp.role_id
@@ -154,6 +188,11 @@ FROM iam_user_permissions iup
     JOIN permissions p ON iup.permission_id = p.permission_id
     JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
 WHERE ia.account_id = $1
+SELECT p.permission_id, p.is_administrator, p.view_assets, p.manage_assets, p.view_modules, p.create_modules, p.manage_modules, p.view_scans, p.start_scans
+FROM iam_user_permissions iup
+    JOIN permissions p ON iup.permission_id = p.permission_id
+    JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
+WHERE ia.account_id = $1
 `
 
 func (q *Queries) GetUserPermissions(ctx context.Context, accountID pgtype.UUID) (Permission, error) {
@@ -174,6 +213,11 @@ func (q *Queries) GetUserPermissions(ctx context.Context, accountID pgtype.UUID)
 }
 
 const getUserRoles = `-- name: GetUserRoles :one
+SELECT role_name
+FROM roles r
+    JOIN iam_user_roles iur ON r.role_id = iur.role_id
+    JOIN iam_accounts ia ON iur.iam_account_id = ia.account_id
+WHERE ia.username = $1
 SELECT role_name
 FROM roles r
     JOIN iam_user_roles iur ON r.role_id = iur.role_id
@@ -214,6 +258,7 @@ const updateRolePermissions = `-- name: UpdateRolePermissions :exec
 WITH updated_permission AS (
     UPDATE permissions
     SET is_administrator = $2,
+    SET is_administrator = $2,
         view_assets = $3,
         manage_assets = $4,
         view_modules = $5,
@@ -222,8 +267,10 @@ WITH updated_permission AS (
         view_scans = $8,
         start_scans = $9
     WHERE permission_id = (
+    WHERE permission_id = (
             SELECT rp.permission_id
             FROM roles_permissions rp
+                JOIN roles r ON rp.role_id = r.role_id
                 JOIN roles r ON rp.role_id = r.role_id
             WHERE r.role_name = $1
             LIMIT 1
@@ -232,10 +279,11 @@ WITH updated_permission AS (
 )
 UPDATE roles_permissions rp
 SET permission_id = updated_permission.permission_id
+SET permission_id = updated_permission.permission_id
 FROM updated_permission
 WHERE rp.permission_id != updated_permission.permission_id
     AND rp.role_id = (
-        SELECT r.role_id
+        SELECT r.crole_id
         FROM roles r
         WHERE r.role_name = $1
         LIMIT 1
@@ -273,6 +321,7 @@ const updateUserPermissions = `-- name: UpdateUserPermissions :exec
 WITH updated_permission AS (
     UPDATE permissions
     SET is_administrator = $2,
+    SET is_administrator = $2,
         view_assets = $3,
         manage_assets = $4,
         view_modules = $5,
@@ -281,8 +330,10 @@ WITH updated_permission AS (
         view_scans = $8,
         start_scans = $9
     WHERE permission_id = (
+    WHERE permission_id = (
             SELECT permission_id
             FROM iam_user_permissions iup
+                JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
                 JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
             WHERE ia.username = $1
         )
@@ -290,7 +341,9 @@ WITH updated_permission AS (
 )
 UPDATE iam_user_permissions iup
 SET permission_id = updated_permission.permission_id
+SET permission_id = updated_permission.permission_id
 FROM updated_permission
+    JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
     JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
 WHERE ia.username = $1
 `

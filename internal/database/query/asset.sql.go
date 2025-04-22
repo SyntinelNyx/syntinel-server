@@ -7,9 +7,105 @@ package query
 
 import (
 	"context"
+	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const addAsset = `-- name: AddAsset :exec
+WITH inserted_sysinfo AS (
+  INSERT INTO system_information (
+    hostname,
+    uptime,
+    boot_time,
+    procs,
+    os,
+    platform,
+    platform_family,
+    platform_version,
+    kernel_version,
+    kernel_arch,
+    virtualization_system,
+    virtualization_role,
+    host_id,
+    cpu_vendor_id,
+    cpu_cores,
+    cpu_model_name,
+    cpu_mhz,
+    cpu_cache_size,
+    memory,
+    disk
+  ) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    $9, $10, $11, $12, $13, $14,
+    $15, $16, $17, $18, $19, $20
+  )
+  RETURNING id
+)
+INSERT INTO assets (
+  asset_id,
+  ip_address,
+  sysinfo_id,
+  root_account_id
+) VALUES (
+  $21, $22, (SELECT id FROM inserted_sysinfo), $23
+)
+`
+
+type AddAssetParams struct {
+	Hostname             pgtype.Text
+	Uptime               pgtype.Int8
+	BootTime             pgtype.Int8
+	Procs                pgtype.Int8
+	Os                   pgtype.Text
+	Platform             pgtype.Text
+	PlatformFamily       pgtype.Text
+	PlatformVersion      pgtype.Text
+	KernelVersion        pgtype.Text
+	KernelArch           pgtype.Text
+	VirtualizationSystem pgtype.Text
+	VirtualizationRole   pgtype.Text
+	HostID               pgtype.Text
+	CpuVendorID          pgtype.Text
+	CpuCores             pgtype.Int4
+	CpuModelName         pgtype.Text
+	CpuMhz               pgtype.Float8
+	CpuCacheSize         pgtype.Int4
+	Memory               pgtype.Int8
+	Disk                 pgtype.Int8
+	AssetID              pgtype.UUID
+	IpAddress            netip.Addr
+	RootAccountID        pgtype.UUID
+}
+
+func (q *Queries) AddAsset(ctx context.Context, arg AddAssetParams) error {
+	_, err := q.db.Exec(ctx, addAsset,
+		arg.Hostname,
+		arg.Uptime,
+		arg.BootTime,
+		arg.Procs,
+		arg.Os,
+		arg.Platform,
+		arg.PlatformFamily,
+		arg.PlatformVersion,
+		arg.KernelVersion,
+		arg.KernelArch,
+		arg.VirtualizationSystem,
+		arg.VirtualizationRole,
+		arg.HostID,
+		arg.CpuVendorID,
+		arg.CpuCores,
+		arg.CpuModelName,
+		arg.CpuMhz,
+		arg.CpuCacheSize,
+		arg.Memory,
+		arg.Disk,
+		arg.AssetID,
+		arg.IpAddress,
+		arg.RootAccountID,
+	)
+	return err
+}
 
 const getAssets = `-- name: GetAssets :one
 SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
