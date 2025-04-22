@@ -8,24 +8,24 @@ RETURNING *;
 
 -- name: GetRootAccountById :one
 SELECT * FROM root_accounts 
-WHERE $1 = account_id;
+WHERE account_id = $1;
 
 -- name: GetRootAccountByEmail :one
 SELECT * FROM root_accounts
-WHERE $1 = email;
+WHERE email = $1;
 
 -- name: GetRootAccountByUsername :one
 SELECT * FROM root_accounts 
-WHERE $1 = username;
+WHERE username = $1;
 
 -- name: GetIAMAccountById :one
 SELECT * FROM iam_accounts 
-WHERE $1 = account_id;
+WHERE account_id = $1;
 
 -- name: GetIAMAccountByEmail :one
 SELECT * FROM iam_accounts
-WHERE $1 = email;
+WHERE email = $1;
 
 -- name: GetIAMAccountByUsername :one
 SELECT * FROM iam_accounts 
-WHERE $1 = username;
+WHERE username = $1;

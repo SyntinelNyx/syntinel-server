@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/lib/pq"
 	ggrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 

@@ -30,6 +30,72 @@ CREATE TABLE IF NOT EXISTS iam_accounts (
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
 
+CREATE TABLE IF NOT EXISTS system_information (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  hostname TEXT,
+  uptime BIGINT,
+  boot_time BIGINT,
+  procs BIGINT,
+  os TEXT,
+  platform TEXT,
+  platform_family TEXT,
+  platform_version TEXT,
+  kernel_version TEXT,
+  kernel_arch TEXT,
+  virtualization_system TEXT,
+  virtualization_role TEXT,
+  host_id TEXT,
+
+  cpu_vendor_id TEXT,
+  cpu_cores INTEGER,
+  cpu_model_name TEXT,
+  cpu_mhz DOUBLE PRECISION,
+  cpu_cache_size INTEGER,
+
+  memory BIGINT,
+  disk BIGINT,
+
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+  asset_id UUID PRIMARY KEY,
+  ip_address INET NOT NULL,
+  sysinfo_id UUID NOT NULL,
+  root_account_id UUID NOT NULL,
+  registered_at TIMESTAMPTZ DEFAULT now(),
+  FOREIGN KEY (sysinfo_id) REFERENCES system_information (id),
+  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
+);
+
+CREATE TABLE IF NOT EXISTS actions (
+  action_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  action_type VARCHAR(10) NOT NULL,
+  action_payload TEXT NOT NULL,
+  root_account_id UUID NOT NULL,
+  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
+);
+
+CREATE TABLE IF NOT EXISTS environments (
+  environment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  environment_name TEXT NOT NULL,
+  prev_env_id UUID,
+  next_env_id UUID,
+  root_account_id UUID NOT NULL,
+  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
+  FOREIGN KEY (prev_env_id) REFERENCES environments (environment_id),
+  FOREIGN KEY (next_env_id) REFERENCES environments (environment_id)
+);
+
+CREATE TABLE IF NOT EXISTS environment_assets (
+  environment_id UUID NOT NULL,
+  asset_id UUID NOT NULL,
+  PRIMARY KEY (environment_id, asset_id),
+  FOREIGN KEY (environment_id) REFERENCES environments (environment_id),
+  FOREIGN KEY (asset_id) REFERENCES assets (asset_id)
+);
+
 CREATE TABLE IF NOT EXISTS permissions (
   permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   is_administrator BOOLEAN DEFAULT FALSE,
@@ -94,11 +160,11 @@ CREATE TABLE IF NOT EXISTS vulnerability_state_history (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable(
-    'vulnerability_state_history',
-    'state_changed_at',
-    if_not_exists => TRUE
-  );
+-- SELECT create_hypertable(
+--     'vulnerability_state_history',
+--     'state_changed_at',
+--     if_not_exists => TRUE
+--   );
 
 CREATE TABLE IF NOT EXISTS scans (
   scan_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -109,24 +175,24 @@ CREATE TABLE IF NOT EXISTS scans (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('scans', 'scan_date', if_not_exists => TRUE);
-
-CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
-  scan_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  root_account_id UUID NOT NULL,
-  scan_id UUID NOT NULL,
-  asset_id UUID NOT NULL,
-  vulnerability_id UUID NOT NULL,
-  scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
-  FOREIGN KEY (scan_id) REFERENCES scans (scan_id),
-  FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
-  FOREIGN KEY (vulnerability_id) REFERENCES vulnerability_data (vulnerability_data_id)
-);
-
--- Convert to hypertable
-SELECT create_hypertable(
-    'asset_vulnerability_state',
-    'scan_date',
-    if_not_exists => TRUE
-  );
+-- SELECT create_hypertable('scans', 'scan_date', if_not_exists => TRUE);
+--
+-- CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
+--   scan_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--   root_account_id UUID NOT NULL,
+--   scan_id UUID NOT NULL,
+--   asset_id UUID NOT NULL,
+--   vulnerability_id UUID NOT NULL,
+--   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id),
+--   FOREIGN KEY (scan_id) REFERENCES scans (scan_id),
+--   FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
+--   FOREIGN KEY (vulnerability_id) REFERENCES vulnerability_data (vulnerability_data_id)
+-- );
+--
+-- -- Convert to hypertable
+-- SELECT create_hypertable(
+--     'asset_vulnerability_state',
+--     'scan_date',
+--     if_not_exists => TRUE
+--   );
