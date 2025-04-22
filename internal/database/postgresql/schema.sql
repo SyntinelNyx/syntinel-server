@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS iam_accounts (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   email_verified_at TIMESTAMPTZ,
+  is_deleted BOOLEAN DEFAULT FALSE,
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
 
@@ -92,6 +93,36 @@ CREATE TABLE IF NOT EXISTS environment_assets (
   FOREIGN KEY (asset_id) REFERENCES assets (asset_id)
 );
 
+CREATE TABLE IF NOT EXISTS permission_templates (
+  template_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  component_name VARCHAR(50),
+  capabilities TEXT[]
+);
+INSERT INTO permission_templates (component_name, capabilities)
+VALUES
+  ('Overview', ARRAY['View']),
+  ('Assets', ARRAY['View', 'Create', 'Manage']),
+  ('Vulnerabilities', ARRAY['View', 'Manage']),
+  ('Environments', ARRAY['View', 'Create', 'Manage']),
+  ('Actions', ARRAY['View', 'Create', 'Manage']),
+  ('Snapshots', ARRAY['View', 'Create', 'Manage']),
+  ('Scans', ARRAY['View', 'Create', 'Manage']),
+  ('UserManagement', ARRAY['View', 'Create', 'Manage']),
+  ('RoleManagement', ARRAY['View', 'Create', 'Manage']),
+  ('ApplicationConfig', ARRAY['View', 'Manage']),
+  ('Logs', ARRAY['View'])
+ON CONFLICT (component_name) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS permissions_new (
+  permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  permission_name TEXT UNIQUE
+);
+INSERT INTO permissions_new (permission_name)
+SELECT pt.component_name || '.' || cap_name AS permission_name
+FROM permission_templates pt
+CROSS JOIN unnest(pt.capabilities) AS cap_name
+ON CONFLICT (permission_name) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS permissions (
   permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   is_administrator BOOLEAN DEFAULT FALSE,
@@ -156,12 +187,7 @@ CREATE TABLE IF NOT EXISTS vulnerability_state_history (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable(
-    'vulnerability_state_history',
-    'state_changed_at',
-    if_not_exists => TRUE
-  );
-
+SELECT create_hypertable('vulnerability_state_history', 'state_changed_at', if_not_exists => TRUE);
 
 CREATE TABLE IF NOT EXISTS scans (
   scan_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -188,11 +214,7 @@ CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable(
-    'asset_vulnerability_state',
-    'scan_date',
-    if_not_exists => TRUE
-  );
+SELECT create_hypertable('asset_vulnerability_state', 'scan_date', if_not_exists => TRUE);
 
 CREATE TABLE IF NOT EXISTS telemetry_subjects (
   telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
