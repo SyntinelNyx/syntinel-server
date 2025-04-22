@@ -40,6 +40,8 @@ openssl x509 -req           \
   -sha256
 
 # Verify the generated server certificate.
+chmod 644 data/ca_cert.pem
+chmod 644 data/server_cert.pem
 openssl verify -verbose -CAfile data/ca_cert.pem data/server_cert.pem
 
 # Generate ECDSA P-256 private key
