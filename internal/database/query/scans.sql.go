@@ -11,6 +11,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchUpdateAVS = `-- name: BatchUpdateAVS :exec
+INSERT INTO asset_vulnerability_state (scan_id, asset_id, vuln_id)
+SELECT $1 AS scan_id,
+    $2 AS asset_id,
+    v.id AS vuln_id
+FROM unnest($3::text []) AS id
+    JOIN vulnerabilities v ON v.id = id
+`
+
+type BatchUpdateAVSParams struct {
+	ScanID   pgtype.UUID
+	AssetID  pgtype.UUID
+	VulnList []string
+}
+
+func (q *Queries) BatchUpdateAVS(ctx context.Context, arg BatchUpdateAVSParams) error {
+	_, err := q.db.Exec(ctx, batchUpdateAVS, arg.ScanID, arg.AssetID, arg.VulnList)
+	return err
+}
+
 const createScanEntry = `-- name: CreateScanEntry :one
 INSERT INTO scans (scanner)
 VALUES ($1)

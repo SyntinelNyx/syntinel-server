@@ -3,6 +3,7 @@ package trivy
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	base "github.com/SyntinelNyx/syntinel-server/internal/scan/strategies/base"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
@@ -29,6 +30,8 @@ type TrivyOutput struct {
 			CVSS            map[string]struct {
 				Score float64 `json:"V3Score"`
 			} `json:"CVSS"`
+			PublishedDate    string `json:"PublishedDate"`
+			LastModifiedDate string `json:"LastModifiedDate"`
 		} `json:"Vulnerabilities"`
 	} `json:"Results"`
 }
@@ -79,13 +82,20 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 			seenCVE[vulnData.VulnerabilityID] = struct{}{}
 
 			cvssScore := GetCVSSScore(map[string]struct{ Score float64 }(vulnData.CVSS))
+
+			layout := "2006-01-02T15:04:05.999999Z"
+			createdOn, _ := time.Parse(layout, vulnData.PublishedDate)
+			lastModified, _ := time.Parse(layout, vulnData.LastModifiedDate)
+
 			vuln := vuln.Vulnerability{
-				CVE_ID:                   vulnData.VulnerabilityID,
-				VulnerabilityName:        vulnData.Title,
-				VulnerabilityDescription: vulnData.Description,
-				VulnerabilitySeverity:    vulnData.Severity,
-				CVSSScore:                cvssScore,
-				References:               vulnData.References,
+				ID:           vulnData.VulnerabilityID,
+				Name:         vulnData.Title,
+				Description:  vulnData.Description,
+				Severity:     vulnData.Severity,
+				CVSSScore:    cvssScore,
+				CreatedOn:    createdOn,
+				LastModified: lastModified,
+				References:   vulnData.References,
 			}
 
 			results = append(results, vuln)
@@ -96,7 +106,21 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 }
 
 func (t *TrivyScanner) PayloadForLinux() (string, error) {
+	flags, isTrivyFlags := t.Flags.(TrivyFlags)
+
+	if !isTrivyFlags {
+		return "", fmt.Errorf("invalid flags for scanner %s", t.Name())
+	}
+
 	payload := fmt.Sprintf("trivy fs %s -f json --scanners vuln", t.FilePath)
+
+	if flags.Severity != "" {
+		payload += " --severity " + flags.Severity
+	}
+
+	if flags.IgnoreUnfixed {
+		payload += " --ignore-unfixed"
+	}
 
 	return payload, nil
 }

@@ -11,40 +11,55 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addNewVulnerabilities = `-- name: AddNewVulnerabilities :exec
-INSERT INTO vulnerabilities (
-        cve_id,
-        vulnerability_name,
-        vulnerability_description,
-        vulnerability_severity,
-        cvss_score,
-        reference
-    )
-SELECT vuln->>'CVE_ID',
-    vuln->>'VulnerabilityName',
-    vuln->>'VulnerabilityDescription',
-    vuln->>'VulnerabilitySeverity',
-    (vuln->>'CVSSScore')::float,
-    -- Handle the References field as an array, default to empty array if not an array
-    CASE
+const batchUpdateVulnerabilityData = `-- name: BatchUpdateVulnerabilityData :exec
+UPDATE vulnerabilities
+SET vulnerability_name = vuln->>'Name',
+    vulnerability_description = vuln->>'Description',
+    vulnerability_severity = vuln->>'Severity',
+    cvss_score = (vuln->>'CVSSScore')::float,
+    created_on = (vuln->>'CreatedOn')::timestamptz,
+    last_modified = (vuln->>'LastModified')::timestamptz,
+    reference = CASE
         WHEN jsonb_typeof(vuln->'References') = 'array' THEN ARRAY(
             SELECT jsonb_array_elements_text(vuln->'References')
         )
-        ELSE ARRAY []::text [] -- Empty array if it's not an array
-    END AS reference
-FROM jsonb_array_elements($1::jsonb) AS vuln ON CONFLICT (cve_id) DO NOTHING
+        ELSE ARRAY []::text []
+    END
+FROM jsonb_array_elements($1::jsonb) AS vuln
+WHERE vulnerabilities.vulnerability_id = vuln->>'ID'
 `
 
-func (q *Queries) AddNewVulnerabilities(ctx context.Context, vulnerabilities []byte) error {
-	_, err := q.db.Exec(ctx, addNewVulnerabilities, vulnerabilities)
+func (q *Queries) BatchUpdateVulnerabilityData(ctx context.Context, vulnerabilities []byte) error {
+	_, err := q.db.Exec(ctx, batchUpdateVulnerabilityData, vulnerabilities)
+	return err
+}
+
+const batchUpdateVulnerabilityState = `-- name: BatchUpdateVulnerabilityState :exec
+UPDATE vulnerabilities v
+SET vulnerability_state = CASE
+        WHEN vl.vulnerability_id IS NULL
+        AND v.vulnerability_state != 'Resolved' THEN 'Resolved'
+        WHEN vl.vulnerability_id IS NOT NULL
+        AND v.vulnerability_state = 'Resolved' THEN 'Resurfaced'
+        ELSE v.vulnerability_state
+    END
+FROM (
+        SELECT unnest($1::text []) AS vulnerability_id
+    ) AS vl
+WHERE v.vulnerability_id = vl.vulnerability_id
+    OR v.vulnerability_state != 'Resolved'
+`
+
+func (q *Queries) BatchUpdateVulnerabilityState(ctx context.Context, vulnList []string) error {
+	_, err := q.db.Exec(ctx, batchUpdateVulnerabilityState, vulnList)
 	return err
 }
 
 const calculateNewVulnerabilities = `-- name: CalculateNewVulnerabilities :exec
-SELECT cve_id
-FROM unnest($2) AS current_cves(cve_id)
-WHERE cve_id NOT IN (
-        SELECT avs.cve_id
+SELECT id
+FROM unnest($2) AS current_vulns(id)
+WHERE id NOT IN (
+        SELECT avs.id
         FROM asset_vulnerability_state avs
             JOIN assets a ON a.asset_id = avs.asset_id
             JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
@@ -68,7 +83,7 @@ FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
     JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
 WHERE a.asset_id = $1
-    AND avs.cve_id IN (
+    AND avs.id IN (
         SELECT unnest($2)
     )
     AND vulnerability_state != 'resolved'
@@ -90,7 +105,7 @@ FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
     JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
 WHERE a.asset_id = $1
-    AND avs.cve_id NOT IN (
+    AND avs.id NOT IN (
         SELECT unnest($2)
     )
     AND vulnerability_state != 'resolved'
@@ -112,7 +127,7 @@ FROM asset_vulnerability_state avs
     JOIN assets a ON a.asset_id = avs.asset_id
     JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
 WHERE a.asset_id = $1
-    AND avs.cve_id IN (
+    AND avs.id IN (
         SELECT unnest($2)
     )
     AND vulnerability_state = 'resolved'
@@ -129,34 +144,30 @@ func (q *Queries) CalculateResurfacedVulnerabilities(ctx context.Context, arg Ca
 }
 
 const getVulnerabilities = `-- name: GetVulnerabilities :many
-SELECT cve_id,
-    vulnerability_name,
-    vulnerability_severity,
-    cvss_score
+SELECT vulnerability_uuid, vulnerability_id, vulnerability_name, vulnerability_description, vulnerability_severity, cvss_score, reference, created_on, last_modified, vulnerability_state
 FROM vulnerabilities
 `
 
-type GetVulnerabilitiesRow struct {
-	CveID                 string
-	VulnerabilityName     string
-	VulnerabilitySeverity pgtype.Text
-	CvssScore             pgtype.Numeric
-}
-
-func (q *Queries) GetVulnerabilities(ctx context.Context) ([]GetVulnerabilitiesRow, error) {
+func (q *Queries) GetVulnerabilities(ctx context.Context) ([]Vulnerability, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilities)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetVulnerabilitiesRow
+	var items []Vulnerability
 	for rows.Next() {
-		var i GetVulnerabilitiesRow
+		var i Vulnerability
 		if err := rows.Scan(
-			&i.CveID,
+			&i.VulnerabilityUuid,
+			&i.VulnerabilityID,
 			&i.VulnerabilityName,
+			&i.VulnerabilityDescription,
 			&i.VulnerabilitySeverity,
 			&i.CvssScore,
+			&i.Reference,
+			&i.CreatedOn,
+			&i.LastModified,
+			&i.VulnerabilityState,
 		); err != nil {
 			return nil, err
 		}
@@ -168,26 +179,86 @@ func (q *Queries) GetVulnerabilities(ctx context.Context) ([]GetVulnerabilitiesR
 	return items, nil
 }
 
+const insertNewVulnerabilities = `-- name: InsertNewVulnerabilities :exec
+INSERT INTO vulnerabilities(vulnerability_id)
+SELECT vulnerability_id
+FROM unnest($1::text []) AS vulnerability_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM vulnerabilities v
+        WHERE v.vulnerability_id = vulnerability_id
+    )
+`
+
+func (q *Queries) InsertNewVulnerabilities(ctx context.Context, vulnList []string) error {
+	_, err := q.db.Exec(ctx, insertNewVulnerabilities, vulnList)
+	return err
+}
+
+const prepareVulnerabilityState = `-- name: PrepareVulnerabilityState :exec
+UPDATE vulnerabilities
+SET vulnerability_state = 'Active'
+WHERE vulnerability_state = 'New'
+`
+
+func (q *Queries) PrepareVulnerabilityState(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, prepareVulnerabilityState)
+	return err
+}
+
+const retrieveUnchangedVulnerabilities = `-- name: RetrieveUnchangedVulnerabilities :many
+SELECT v.vulnerability_id
+FROM unnest($1::text []) WITH ORDINALITY AS vuln(elem, ord)
+    JOIN unnest($2::timestamptz []) WITH ORDINALITY AS mod(elem, ord) ON vuln.ord = mod.ord
+    JOIN vulnerabilities v ON v.vulnerability_id = vuln.elem
+WHERE v.last_modified >= mod.elem
+`
+
+type RetrieveUnchangedVulnerabilitiesParams struct {
+	VulnList     []string
+	ModifiedList []pgtype.Timestamptz
+}
+
+func (q *Queries) RetrieveUnchangedVulnerabilities(ctx context.Context, arg RetrieveUnchangedVulnerabilitiesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, retrieveUnchangedVulnerabilities, arg.VulnList, arg.ModifiedList)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var vulnerability_id string
+		if err := rows.Scan(&vulnerability_id); err != nil {
+			return nil, err
+		}
+		items = append(items, vulnerability_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updatePreviouslySeenVulnerabilities = `-- name: UpdatePreviouslySeenVulnerabilities :many
 WITH current_vulns AS (
-    SELECT unnest($3::text []) AS cve_id
+    SELECT unnest($3::text []) AS id
 ),
 updated AS (
     UPDATE asset_vulnerability_state avs
     SET scan_id = $2,
         vulnerability_state = CASE
-            WHEN v.cve_id NOT IN (
-                SELECT cve_id
+            WHEN v.id NOT IN (
+                SELECT id
                 FROM current_vulns
             )
             AND avs.vulnerability_state != 'Resolved' THEN 'Resolved'
-            WHEN v.cve_id IN (
-                SELECT cve_id
+            WHEN v.id IN (
+                SELECT id
                 FROM current_vulns
             )
             AND avs.vulnerability_state = 'Resolved' THEN 'Resurfaced'
-            WHEN v.cve_id IN (
-                SELECT cve_id
+            WHEN v.id IN (
+                SELECT id
                 FROM current_vulns
             )
             AND avs.vulnerability_state = 'New' THEN 'Active'
@@ -198,36 +269,36 @@ updated AS (
         AND avs.vulnerability_id = v.vulnerability_id
 ),
 new_vulns AS (
-    SELECT cve_id
+    SELECT id
     FROM current_vulns
-    WHERE cve_id NOT IN (
-            SELECT cve_id
+    WHERE id NOT IN (
+            SELECT id
             FROM vulnerabilities
         )
 )
-SELECT cve_id::TEXT
+SELECT id::TEXT
 FROM new_vulns
 `
 
 type UpdatePreviouslySeenVulnerabilitiesParams struct {
-	AssetID pgtype.UUID
-	ScanID  pgtype.UUID
-	CveList []string
+	AssetID  pgtype.UUID
+	ScanID   pgtype.UUID
+	VulnList []string
 }
 
 func (q *Queries) UpdatePreviouslySeenVulnerabilities(ctx context.Context, arg UpdatePreviouslySeenVulnerabilitiesParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, updatePreviouslySeenVulnerabilities, arg.AssetID, arg.ScanID, arg.CveList)
+	rows, err := q.db.Query(ctx, updatePreviouslySeenVulnerabilities, arg.AssetID, arg.ScanID, arg.VulnList)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var items []string
 	for rows.Next() {
-		var cve_id string
-		if err := rows.Scan(&cve_id); err != nil {
+		var id string
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		items = append(items, cve_id)
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

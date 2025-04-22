@@ -30,7 +30,9 @@ func TestTrivyImplementation(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
-		t.Logf("%s", vulnerabilities[i].CVE_ID)
+		t.Logf("%s", vulnerabilities[i].ID)
+		t.Logf("%s", vulnerabilities[i].CreatedOn)
+		t.Logf("%s", vulnerabilities[i].LastModified)
 	}
 	t.Logf("Total Vulns: %d", len(vulnerabilities))
 

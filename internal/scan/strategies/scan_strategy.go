@@ -20,7 +20,7 @@ func RegisterScanner(scannerToAdd Scanner) error {
 
 	_, exists := registeredScanners[scannerToAdd.Name()]
 	if exists {
-		return fmt.Errorf("Scanner \"%s\" already exists", scannerToAdd.Name())
+		return fmt.Errorf("scanner \"%s\" already exists", scannerToAdd.Name())
 	}
 
 	registeredScanners[scannerToAdd.Name()] = scannerToAdd
@@ -32,7 +32,7 @@ func GetScanner(scannerName string) (Scanner, error) {
 	scanner, exists := registeredScanners[scannerName]
 
 	if !exists {
-		return nil, fmt.Errorf("Scanner \"%s\" not found", scannerName)
+		return nil, fmt.Errorf("scanner \"%s\" not found", scannerName)
 	}
 
 	return scanner, nil
