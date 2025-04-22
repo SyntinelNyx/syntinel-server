@@ -196,3 +196,33 @@ CREATE TABLE IF NOT EXISTS scans (
 --     'scan_date',
 --     if_not_exists => TRUE
 --   );
+
+CREATE TABLE IF NOT EXISTS telemetry_subjects (
+    telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+);
+
+CREATE TABLE IF NOT EXISTS telemetry (
+    telemetry_id UUID NOT NULL,
+    scan_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+    cpu_usage FLOAT NOT NULL,
+    mem_total BIGINT NOT NULL,
+    mem_available BIGINT NOT NULL,
+    mem_used BIGINT NOT NULL,
+    mem_used_percent FLOAT NOT NULL,
+    disk_total BIGINT NOT NULL,
+    disk_free BIGINT NOT NULL,
+    disk_used BIGINT NOT NULL,
+    disk_used_percent FLOAT NOT NULL,
+    PRIMARY KEY (scan_time, telemetry_id),
+    FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
+);
+
+CREATE TABLE IF NOT EXISTS telemetry_asset (
+    telemetry_id UUID NOT NULL,
+    asset_id UUID NOT NULL,
+    root_account_id UUID NOT NULL,
+    PRIMARY KEY (telemetry_id, asset_id),
+    FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects (telemetry_id),
+    FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
+);
+SELECT create_hypertable('telemetry', 'scan_time', if_not_exists => TRUE);
