@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -41,10 +42,17 @@ func LoadCreds() {
 	})
 }
 
-func Send(target string, commands []*controlpb.ControlMessage) []*controlpb.ControlResponse {
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(creds))
+func Send(target string, commands []*controlpb.ControlMessage) ([]*controlpb.ControlResponse, error) {
+	conn, err := grpc.NewClient(
+		target,
+		grpc.WithTransportCredentials(creds),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(1024*1024*1024),
+			grpc.MaxCallSendMsgSize(1024*1024*1024),
+		),
+	)
 	if err != nil {
-		logger.Error("Failed to connect to agent: %v", err)
+		return nil, fmt.Errorf("failed to connect to agent: %v", err)
 	}
 	defer conn.Close()
 
@@ -53,7 +61,7 @@ func Send(target string, commands []*controlpb.ControlMessage) []*controlpb.Cont
 
 	stream, err := client.Control(ctx)
 	if err != nil {
-		logger.Error("Failed to create stream with agent: %v", err)
+		return nil, fmt.Errorf("failed to create stream with agent: %v", err)
 	}
 
 	go func() {
@@ -61,10 +69,12 @@ func Send(target string, commands []*controlpb.ControlMessage) []*controlpb.Cont
 			logger.Info("Sending command to %s: %s", target, cmd.Command)
 			if err := stream.Send(cmd); err != nil {
 				logger.Error("Failed to send command to agent: %v", err)
+				return
 			}
 		}
 		if err := stream.CloseSend(); err != nil {
 			logger.Error("Failed to close send stream: %v", err)
+			return
 		}
 	}()
 
@@ -75,11 +85,11 @@ func Send(target string, commands []*controlpb.ControlMessage) []*controlpb.Cont
 			break
 		}
 		if err != nil {
-			logger.Error("Failed to get response from agent: %v", err)
+			return nil, fmt.Errorf("failed to get response from agent: %v", err)
 		}
 		responses = append(responses, res)
 		logger.Info("Agent Response: %+v", res)
 	}
 
-	return responses
+	return responses, nil
 }

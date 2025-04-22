@@ -12,13 +12,13 @@ services:
       - APP_PORT=
       - APP_CONFIG_PATH=
       - REDIS_URL=
-      - DATABASE_URL=
+      - DATABASE_URL=postgres://${POSTGRESQL_USER}:${POSTGRESQL_PASSWORD}@postgres:5432/${POSTGRESQL_DB}?sslmode=disable
       - CSRF_SECRET=
       - DATA_PATH=
     ports:
       - 8080:8080
     volumes:
-      - ~/syntinel-server/:/app/data/
+      - syntinel_data:/app/data/
     restart: always
 
   redis:
@@ -27,18 +27,23 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - ~/syntinel-server/redis_data:/data
+      - redis_data:/data
     restart: always
 
   postgres:
     container_name: postgres
     image: postgres:latest
     environment:
-      - POSTGRES_USER=
-      - POSTGRES_PASSWORD=
-      - POSTGRES_DB=
+      POSTGRES_USER: ${POSTGRESQL_USER}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRESQL_DB}
     ports:
       - 5432:5432
     volumes:
-      - ~/syntinel-server/postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     restart: always
+
+volumes:
+  syntinel_data:
+  redis_data:
+  postgres_data:

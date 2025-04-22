@@ -40,6 +40,20 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	// go func() {
+	// 	command := []*controlpb.ControlMessage{
+	// 		{
+	// 			Command: "exec",
+	// 			Payload: "trivy fs / -f json --scanners vuln",
+	// 		},
+	// 	}
+	// 	resp, err := commands.Command("localhost:50051", command)
+	// 	if err != nil {
+	// 		logger.Fatal("Something happened: %v", err)
+	// 	}
+	// 	logger.Info("Scan result: %v", resp)
+	// }()
+
 	certPath := filepath.Join(os.Getenv("DATA_PATH"), "server_cert.pem")
 	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "server_key.pem")
 	go func() {
