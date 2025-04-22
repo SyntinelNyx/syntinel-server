@@ -5,21 +5,92 @@
 package query
 
 import (
+	"database/sql/driver"
+	"fmt"
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Vulnstate string
+
+const (
+	VulnstateNew        Vulnstate = "New"
+	VulnstateActive     Vulnstate = "Active"
+	VulnstateResolved   Vulnstate = "Resolved"
+	VulnstateResurfaced Vulnstate = "Resurfaced"
+)
+
+func (e *Vulnstate) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Vulnstate(s)
+	case string:
+		*e = Vulnstate(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Vulnstate: %T", src)
+	}
+	return nil
+}
+
+type NullVulnstate struct {
+	Vulnstate Vulnstate
+	Valid     bool // Valid is true if Vulnstate is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullVulnstate) Scan(value interface{}) error {
+	if value == nil {
+		ns.Vulnstate, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Vulnstate.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullVulnstate) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Vulnstate), nil
+}
+
+type Action struct {
+	ActionID      pgtype.UUID
+	ActionType    string
+	ActionPayload string
+	RootAccountID pgtype.UUID
+}
+
 type Asset struct {
-	AssetID   pgtype.UUID
-	AssetName string
-	AssetOs   string
+	AssetID       pgtype.UUID
+	IpAddress     netip.Addr
+	SysinfoID     pgtype.UUID
+	RootAccountID pgtype.UUID
+	RegisteredAt  pgtype.Timestamptz
 }
 
 type AssetVulnerabilityState struct {
-	ScanResultID       pgtype.UUID
-	ScanID             pgtype.UUID
-	AssetID            pgtype.UUID
-	VulnerabilityID    pgtype.UUID
-	VulnerabilityState interface{}
+	ScanResultID    pgtype.UUID
+	RootAccountID   pgtype.UUID
+	ScanID          pgtype.UUID
+	AssetID         pgtype.UUID
+	VulnerabilityID pgtype.UUID
+	ScanDate        pgtype.Timestamptz
+}
+
+type Environment struct {
+	EnvironmentID   pgtype.UUID
+	EnvironmentName string
+	PrevEnvID       pgtype.UUID
+	NextEnvID       pgtype.UUID
+	RootAccountID   pgtype.UUID
+}
+
+type EnvironmentAsset struct {
+	EnvironmentID pgtype.UUID
+	AssetID       pgtype.UUID
 }
 
 type IamAccount struct {
@@ -29,9 +100,9 @@ type IamAccount struct {
 	Username        string
 	PasswordHash    string
 	AccountStatus   string
-	CreatedAt       pgtype.Int8
-	UpdatedAt       pgtype.Int8
-	EmailVerifiedAt pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	EmailVerifiedAt pgtype.Timestamptz
 }
 
 type IamUserPermission struct {
@@ -72,23 +143,82 @@ type RootAccount struct {
 	Email           string
 	Username        string
 	PasswordHash    string
-	CreatedAt       pgtype.Int8
-	UpdatedAt       pgtype.Int8
-	EmailVerifiedAt pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	EmailVerifiedAt pgtype.Timestamptz
 }
 
 type Scan struct {
-	ScanID   pgtype.UUID
-	ScanDate pgtype.Timestamptz
-	Scanner  pgtype.Text
+	ScanID        pgtype.UUID
+	RootAccountID pgtype.UUID
+	ScannerName   string
+	ScanDate      pgtype.Timestamptz
 }
 
-type Vulnerability struct {
-	VulnerabilityID          pgtype.UUID
-	CveID                    string
-	VulnerabilityName        string
+type SystemInformation struct {
+	ID                   pgtype.UUID
+	Hostname             pgtype.Text
+	Uptime               pgtype.Int8
+	BootTime             pgtype.Int8
+	Procs                pgtype.Int8
+	Os                   pgtype.Text
+	Platform             pgtype.Text
+	PlatformFamily       pgtype.Text
+	PlatformVersion      pgtype.Text
+	KernelVersion        pgtype.Text
+	KernelArch           pgtype.Text
+	VirtualizationSystem pgtype.Text
+	VirtualizationRole   pgtype.Text
+	HostID               pgtype.Text
+	CpuVendorID          pgtype.Text
+	CpuCores             pgtype.Int4
+	CpuModelName         pgtype.Text
+	CpuMhz               pgtype.Float8
+	CpuCacheSize         pgtype.Int4
+	Memory               pgtype.Int8
+	Disk                 pgtype.Int8
+	CreatedAt            pgtype.Timestamptz
+}
+
+type Telemetry struct {
+	TelemetryID     pgtype.UUID
+	ScanTime        pgtype.Timestamptz
+	CpuUsage        float64
+	MemTotal        int64
+	MemAvailable    int64
+	MemUsed         int64
+	MemUsedPercent  float64
+	DiskTotal       int64
+	DiskFree        int64
+	DiskUsed        int64
+	DiskUsedPercent float64
+}
+
+type TelemetryAsset struct {
+	TelemetryID   pgtype.UUID
+	AssetID       pgtype.UUID
+	RootAccountID pgtype.UUID
+}
+
+type TelemetrySubject struct {
+	TelemetryID pgtype.UUID
+}
+
+type VulnerabilityDatum struct {
+	VulnerabilityDataID      pgtype.UUID
+	VulnerabilityID          string
+	VulnerabilityName        pgtype.Text
 	VulnerabilityDescription pgtype.Text
 	VulnerabilitySeverity    pgtype.Text
 	CvssScore                pgtype.Numeric
-	Reference                []string
+	CreatedOn                pgtype.Timestamptz
+	LastModified             pgtype.Timestamptz
+}
+
+type VulnerabilityStateHistory struct {
+	HistoryID          pgtype.UUID
+	VulnDataID         pgtype.UUID
+	VulnerabilityState Vulnstate
+	StateChangedAt     pgtype.Timestamptz
+	RootAccountID      pgtype.UUID
 }
