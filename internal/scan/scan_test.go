@@ -8,6 +8,7 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -238,6 +239,8 @@ func TestScan(t *testing.T) {
 
 	rootAccount, err := handler.queries.GetRootAccountByUsername(ctx, "test")
 	assert.NoError(t, err)
+
+	grpc.LoadCreds()
 
 	scanner, _ := strategies.GetScanner("trivy")
 	err = handler.LaunchScan("trivy", scanner.DefaultFlags(), rootAccount.AccountID, "root")
