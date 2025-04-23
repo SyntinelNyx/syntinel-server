@@ -107,44 +107,26 @@ func (q *Queries) AddAsset(ctx context.Context, arg AddAssetParams) error {
 	return err
 }
 
-const getAllAssets = `-- name: GetAllAssets :many
-SELECT
-  a.asset_id,
-  s.hostname,
-  s.os,
-  s.platform_version,
-  a.ip_address,
-  s.created_at
-FROM assets a
-JOIN system_information s ON a.sysinfo_id = s.id
-WHERE a.root_account_id = $1
+const getAssets = `-- name: GetAssets :many
+SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
+WHERE root_account_id = $1
 `
 
-type GetAllAssetsRow struct {
-	AssetID         pgtype.UUID
-	Hostname        pgtype.Text
-	Os              pgtype.Text
-	PlatformVersion pgtype.Text
-	IpAddress       netip.Addr
-	CreatedAt       pgtype.Timestamptz
-}
-
-func (q *Queries) GetAllAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]GetAllAssetsRow, error) {
-	rows, err := q.db.Query(ctx, getAllAssets, rootAccountID)
+func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
+	rows, err := q.db.Query(ctx, getAssets, rootAccountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetAllAssetsRow
+	var items []Asset
 	for rows.Next() {
-		var i GetAllAssetsRow
+		var i Asset
 		if err := rows.Scan(
 			&i.AssetID,
-			&i.Hostname,
-			&i.Os,
-			&i.PlatformVersion,
 			&i.IpAddress,
-			&i.CreatedAt,
+			&i.SysinfoID,
+			&i.RootAccountID,
+			&i.RegisteredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -156,32 +138,19 @@ func (q *Queries) GetAllAssets(ctx context.Context, rootAccountID pgtype.UUID) (
 	return items, nil
 }
 
-const getAsset = `-- name: GetAsset :one
-SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
-WHERE root_account_id = $1
-`
-
-func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asset, error) {
-	row := q.db.QueryRow(ctx, getAsset, rootAccountID)
-	var i Asset
-	err := row.Scan(
-		&i.AssetID,
-		&i.IpAddress,
-		&i.SysinfoID,
-		&i.RootAccountID,
-		&i.RegisteredAt,
-	)
-	return i, err
-}
-
 const getIPByAssetID = `-- name: GetIPByAssetID :one
 SELECT ip_address
 FROM assets
-WHERE asset_id = $1
+WHERE asset_id = $1 AND root_account_id = $2
 `
 
-func (q *Queries) GetIPByAssetID(ctx context.Context, assetID pgtype.UUID) (netip.Addr, error) {
-	row := q.db.QueryRow(ctx, getIPByAssetID, assetID)
+type GetIPByAssetIDParams struct {
+	AssetID       pgtype.UUID
+	RootAccountID pgtype.UUID
+}
+
+func (q *Queries) GetIPByAssetID(ctx context.Context, arg GetIPByAssetIDParams) (netip.Addr, error) {
+	row := q.db.QueryRow(ctx, getIPByAssetID, arg.AssetID, arg.RootAccountID)
 	var ip_address netip.Addr
 	err := row.Scan(&ip_address)
 	return ip_address, err

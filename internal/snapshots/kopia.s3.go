@@ -3,11 +3,14 @@ package snapshots
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,8 +19,8 @@ import (
 // 	endpoint := os.Getenv("KOPIA_S3_ENDPOINT")
 // 	accessKey := os.Getenv("KOPIA_S3_ACCESS_KEY")
 // 	secretKey := os.Getenv("KOPIA_S3_SECRET_KEY")
-// 	repoPwd := os.Getenv("KOPIA_REPO_PASSWORD")	
-	
+// 	repoPwd := os.Getenv("KOPIA_REPO_PASSWORD")
+
 // 	controlMessages := []*controlpb.ControlMessage{
 // 		{
 // 			Command: "exec",
@@ -40,12 +43,30 @@ import (
 // 	return "Repository created successfully", nil
 // }
 
-func (h *Handler) ConnectKopiaS3Repository(rootAccountID, agentID pgtype.UUID) (string, error) {
+func (h *Handler) ConnectKopiaS3Repository(accountID, agentID pgtype.UUID) (string, error) {
+	ctx := ctx.Background()
 	bucket := os.Getenv("S3_BUCKET")
 	endpoint := os.Getenv("S3_ENDPOINT")
 	accessKey := os.Getenv("S3_ACCESS_KEY")
 	secretKey := os.Getenv("S3_SECRET_KEY")
 	repoPwd := os.Getenv("KOPIA_REPO_PASSWORD")
+
+	account := auth.GetClaims(r.Context())
+	if account.AccountType != "root" {
+		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.accountID)
+		if err != nil {
+			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
+			return
+		}
+	} else {
+		rootId = account.AccountID
+	}
+
+	row, err := h.queries.GetAllAssets(context.Background(), rootId)
+	if err != nil {
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Error when retrieving assets information", err)
+		return
+	}
 
 	controlMessages := []*controlpb.ControlMessage{
 		{
