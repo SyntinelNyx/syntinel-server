@@ -280,3 +280,62 @@ func (q *Queries) RetrieveUnchangedVulnerabilities(ctx context.Context, arg Retr
 	}
 	return items, nil
 }
+
+const retrieveVulnTable = `-- name: RetrieveVulnTable :many
+SELECT vd.vulnerability_id,
+    vd.vulnerability_severity,
+    vd.cvss_score,
+    array_agg(DISTINCT avs.asset_id)::TEXT [] AS assets_affected,
+    MAX(
+        CASE
+            WHEN vsh.vulnerability_state != 'Resolved' THEN vsh.state_changed_at
+            ELSE NULL
+        END
+    )::TIMESTAMPTZ AS last_seen,
+    vsh.vulnerability_state::VULNSTATE AS vuln_state
+FROM vulnerability_data vd
+    JOIN asset_vulnerability_scan avs ON vd.vulnerability_data_id = avs.vulnerability_id
+    JOIN scans s ON avs.scan_id = s.scan_id
+    LEFT JOIN vulnerability_state_history vsh ON vd.vulnerability_data_id = vsh.vuln_data_id
+WHERE s.root_account_id = $1
+    AND avs.scan_date = s.scan_date
+GROUP BY vd.vulnerability_id,
+    vd.vulnerability_severity,
+    vd.cvss_score
+`
+
+type RetrieveVulnTableRow struct {
+	VulnerabilityID       string
+	VulnerabilitySeverity pgtype.Text
+	CvssScore             pgtype.Numeric
+	AssetsAffected        []string
+	LastSeen              pgtype.Timestamptz
+	VulnState             Vulnstate
+}
+
+func (q *Queries) RetrieveVulnTable(ctx context.Context, rootAccountID pgtype.UUID) ([]RetrieveVulnTableRow, error) {
+	rows, err := q.db.Query(ctx, retrieveVulnTable, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveVulnTableRow
+	for rows.Next() {
+		var i RetrieveVulnTableRow
+		if err := rows.Scan(
+			&i.VulnerabilityID,
+			&i.VulnerabilitySeverity,
+			&i.CvssScore,
+			&i.AssetsAffected,
+			&i.LastSeen,
+			&i.VulnState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

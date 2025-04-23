@@ -30,3 +30,13 @@ SELECT s.root_account_id,
 FROM unnest(@vuln_list::text []) AS id
     JOIN vulnerability_data vd ON vd.vulnerability_id = id
     JOIN scans s ON s.scan_id = $1;
+
+-- name: RetrieveScans :many
+SELECT s.scan_id,
+    ra.username AS root_account_username,
+    s.root_account_id,
+    s.scanner_name,
+    s.scan_date
+FROM scans s
+    JOIN root_accounts ra ON s.root_account_id = ra.account_id
+WHERE root_account_id = $1;

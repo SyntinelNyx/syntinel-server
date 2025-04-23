@@ -12,11 +12,16 @@ import (
 )
 
 const batchUpdateAVS = `-- name: BatchUpdateAVS :exec
-INSERT INTO asset_vulnerability_scan (root_account_id, scan_id, asset_id, vuln_id)
+INSERT INTO asset_vulnerability_scan (
+        root_account_id,
+        scan_id,
+        asset_id,
+        vulnerability_id
+    )
 SELECT s.root_account_id,
     $1 AS scan_id,
     $2 AS asset_id,
-    vd.vulnerability_id AS vuln_id
+    vd.vulnerability_data_id AS vulnerability_id
 FROM unnest($3::text []) AS id
     JOIN vulnerability_data vd ON vd.vulnerability_id = id
     JOIN scans s ON s.scan_id = $1
@@ -75,4 +80,49 @@ func (q *Queries) CreateScanEntryRoot(ctx context.Context, arg CreateScanEntryRo
 	var scan_id pgtype.UUID
 	err := row.Scan(&scan_id)
 	return scan_id, err
+}
+
+const retrieveScans = `-- name: RetrieveScans :many
+SELECT s.scan_id,
+    ra.username AS root_account_username,
+    s.root_account_id,
+    s.scanner_name,
+    s.scan_date
+FROM scans s
+    JOIN root_accounts ra ON s.root_account_id = ra.account_id
+WHERE root_account_id = $1
+`
+
+type RetrieveScansRow struct {
+	ScanID              pgtype.UUID
+	RootAccountUsername string
+	RootAccountID       pgtype.UUID
+	ScannerName         string
+	ScanDate            pgtype.Timestamptz
+}
+
+func (q *Queries) RetrieveScans(ctx context.Context, rootAccountID pgtype.UUID) ([]RetrieveScansRow, error) {
+	rows, err := q.db.Query(ctx, retrieveScans, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveScansRow
+	for rows.Next() {
+		var i RetrieveScansRow
+		if err := rows.Scan(
+			&i.ScanID,
+			&i.RootAccountUsername,
+			&i.RootAccountID,
+			&i.ScannerName,
+			&i.ScanDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -64,13 +64,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accountId, err := accountID.Value()
-	if err != nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed To Parse UUID", err)
-		return
-	}
+	// accountId, err := accountID.Value()
+	// if err != nil {
+	// 	response.RespondWithError(w, r, http.StatusInternalServerError, "Failed To Parse UUID", err)
+	// 	return
+	// }
 
-	accessToken, err := generateAccessToken(accountId, request.AccountType)
+	accessToken, err := generateAccessToken(accountID, request.AccountType)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Could Not Generate Access Token", err)
 		return

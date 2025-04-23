@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 )
 
 type Router struct {
@@ -83,18 +86,17 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
+			scanHandler := scan.NewHandler(r.queries)
+			vulnHandler := vuln.NewHandler(r.queries)
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
-			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
-				account := auth.GetClaims(req.Context())
-				response.RespondWithJSON(w, http.StatusOK,
-					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
-			})
-
-			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Get("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
+			subRouter.Post("/scan/launch", scanHandler.Launch)
+			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
+			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
@@ -107,7 +109,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
 				account := auth.GetClaims(req.Context())
 				response.RespondWithJSON(w, http.StatusOK,
-					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
+					map[string]string{"account_id": fmt.Sprintf("%x", account.AccountID.Bytes), "account_type": account.AccountType})
 			})
 			subRouter.Post("/auth/logout", authHandler.Logout)
 		})
