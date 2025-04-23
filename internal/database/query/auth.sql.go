@@ -169,3 +169,16 @@ func (q *Queries) GetRootAccountByUsername(ctx context.Context, username string)
 	)
 	return i, err
 }
+
+const getRootAccountIDForIAMUser = `-- name: GetRootAccountIDForIAMUser :one
+SELECT root_account_id
+FROM iam_accounts
+WHERE account_id = $1
+`
+
+func (q *Queries) GetRootAccountIDForIAMUser(ctx context.Context, accountID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getRootAccountIDForIAMUser, accountID)
+	var root_account_id pgtype.UUID
+	err := row.Scan(&root_account_id)
+	return root_account_id, err
+}

@@ -29,3 +29,8 @@ WHERE email = $1;
 -- name: GetIAMAccountByUsername :one
 SELECT * FROM iam_accounts 
 WHERE username = $1;
+
+-- name: GetRootAccountIDForIAMUser :one
+SELECT root_account_id
+FROM iam_accounts
+WHERE account_id = $1;

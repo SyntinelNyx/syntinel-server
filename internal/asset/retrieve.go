@@ -8,6 +8,7 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AssetDTO struct {
@@ -20,8 +21,21 @@ type AssetDTO struct {
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
+	var rootId pgtype.UUID
+	var err error
+
 	account := auth.GetClaims(r.Context())
-	row, err := h.queries.GetAllAssets(context.Background(), account.AccountID)
+	if account.AccountType != "root" {
+		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
+		if err != nil {
+			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
+			return
+		}
+	} else {
+		rootId = account.AccountID
+	}
+
+	row, err := h.queries.GetAllAssets(context.Background(), rootId)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error when retrieving assets information", err)
 		return
