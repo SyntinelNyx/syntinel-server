@@ -76,7 +76,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 			},
 		}
 
-		responses, err := commands.Command(asset.IpAddress.String(), controlMessages)
+		responses, err := commands.Command(fmt.Sprintf("%s:50051", asset.IpAddress.String()), controlMessages)
 		if err != nil {
 			return err
 		}
