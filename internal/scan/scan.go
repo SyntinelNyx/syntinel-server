@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type gRPCMock func(action string, payload string) (string, error)
-
-func (h *Handler) LaunchScan(scannerName string, flags any, mock gRPCMock) error {
+func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUID, accountType string) error {
 	ctx := context.Background()
 
 	scanner, err := strategies.GetScanner(scannerName)
@@ -21,33 +21,67 @@ func (h *Handler) LaunchScan(scannerName string, flags any, mock gRPCMock) error
 		return fmt.Errorf("something went wrong: %v", err)
 	}
 
-	scanUUID, err := h.queries.CreateScanEntry(ctx, pgtype.Text{String: scanner.Name(), Valid: true})
-	if err != nil {
-		return errors.New("error creating new scan entry")
+	var scanUUID pgtype.UUID
+	if accountType == "root" {
+		param := query.CreateScanEntryRootParams{
+			ScannerName:   scannerName,
+			RootAccountID: accountID,
+		}
+
+		scanUUID, err = h.queries.CreateScanEntryRoot(ctx, param)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		param := query.CreateScanEntryIAMUserParams{
+			ScannerName:   scannerName,
+			ScannedByUser: accountID,
+		}
+
+		scanUUID, err = h.queries.CreateScanEntryIAMUser(ctx, param)
+
+		if err != nil {
+			return err
+		}
 	}
 
-	assets, err := h.queries.GetAssets(ctx)
+	rootUUID := accountID
+	if accountType == "iam" {
+		rootUUID, err = h.queries.GetRootAccountIDForIAMUser(ctx, accountID)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	assets, err := h.queries.GetAllAssets(ctx, rootUUID)
+
 	if err != nil || len(assets) == 0 {
 		return errors.New("error pulling assets")
-	}
-
-	err = h.queries.PrepareVulnerabilityState(ctx)
-	if err != nil {
-		return err
 	}
 
 	allVulnsSeen := make(map[string]vuln.Vulnerability)
 
 	for _, asset := range assets {
-		payload, err := scanner.CalculateCommand(asset.AssetOs, "/", flags)
+		payload, err := scanner.CalculateCommand(asset.Os.String, "/", flags)
 		if err != nil {
 			return err
 		}
 
-		// Replace with gRPC call for scanning
-		jsonOutput, _ := mock("exec", payload)
+		controlMessages := []*controlpb.ControlMessage{
+			{
+				Command: "exec",
+				Payload: payload,
+			},
+		}
 
-		vulnerabilitiesList, err := scanner.ParseResults(jsonOutput)
+		responses, err := commands.Command(asset.IpAddress.String(), controlMessages)
+		if err != nil {
+			return err
+		}
+
+		vulnerabilitiesList, err := scanner.ParseResults(responses[0].Result)
 		if err != nil {
 			return errors.New("error parsing results")
 		}
@@ -104,13 +138,15 @@ func (h *Handler) LaunchScan(scannerName string, flags any, mock gRPCMock) error
 			changedVulns = append(changedVulns, vulnData)
 		}
 	}
-
-	vulnJSON, err := vuln.GetVulnerabilitiesJSON(changedVulns)
-	if err != nil {
+	param := query.BatchUpdateVulnerabilityStateParams{
+		AccountID: accountID,
+		VulnList:  vulnIDs,
+	}
+	if err := h.queries.BatchUpdateVulnerabilityState(ctx, param); err != nil {
 		return err
 	}
-
-	if err := h.queries.BatchUpdateVulnerabilityState(ctx, vulnIDs); err != nil {
+	vulnJSON, err := vuln.GetVulnerabilitiesJSON(changedVulns)
+	if err != nil {
 		return err
 	}
 

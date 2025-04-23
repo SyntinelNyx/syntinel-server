@@ -12,12 +12,14 @@ import (
 )
 
 const batchUpdateAVS = `-- name: BatchUpdateAVS :exec
-INSERT INTO asset_vulnerability_state (scan_id, asset_id, vuln_id)
-SELECT $1 AS scan_id,
+INSERT INTO asset_vulnerability_scan (root_account_id, scan_id, asset_id, vuln_id)
+SELECT s.root_account_id,
+    $1 AS scan_id,
     $2 AS asset_id,
-    v.id AS vuln_id
+    vd.vulnerability_id AS vuln_id
 FROM unnest($3::text []) AS id
-    JOIN vulnerabilities v ON v.id = id
+    JOIN vulnerability_data vd ON vd.vulnerability_id = id
+    JOIN scans s ON s.scan_id = $1
 `
 
 type BatchUpdateAVSParams struct {
@@ -31,14 +33,45 @@ func (q *Queries) BatchUpdateAVS(ctx context.Context, arg BatchUpdateAVSParams) 
 	return err
 }
 
-const createScanEntry = `-- name: CreateScanEntry :one
-INSERT INTO scans (scanner)
-VALUES ($1)
+const createScanEntryIAMUser = `-- name: CreateScanEntryIAMUser :one
+INSERT INTO scans (scanner_name, root_account_id, scanned_by_user)
+VALUES (
+        $1,
+        (
+            SELECT root_account_id
+            FROM iam_accounts
+            WHERE account_id = $2
+        ),
+        $2
+    )
 RETURNING scan_id
 `
 
-func (q *Queries) CreateScanEntry(ctx context.Context, scanner pgtype.Text) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, createScanEntry, scanner)
+type CreateScanEntryIAMUserParams struct {
+	ScannerName   string
+	ScannedByUser pgtype.UUID
+}
+
+func (q *Queries) CreateScanEntryIAMUser(ctx context.Context, arg CreateScanEntryIAMUserParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, createScanEntryIAMUser, arg.ScannerName, arg.ScannedByUser)
+	var scan_id pgtype.UUID
+	err := row.Scan(&scan_id)
+	return scan_id, err
+}
+
+const createScanEntryRoot = `-- name: CreateScanEntryRoot :one
+INSERT INTO scans (scanner_name, root_account_id)
+VALUES ($1, $2)
+RETURNING scan_id
+`
+
+type CreateScanEntryRootParams struct {
+	ScannerName   string
+	RootAccountID pgtype.UUID
+}
+
+func (q *Queries) CreateScanEntryRoot(ctx context.Context, arg CreateScanEntryRootParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, createScanEntryRoot, arg.ScannerName, arg.RootAccountID)
 	var scan_id pgtype.UUID
 	err := row.Scan(&scan_id)
 	return scan_id, err

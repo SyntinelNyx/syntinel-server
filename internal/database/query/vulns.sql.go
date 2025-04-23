@@ -12,7 +12,7 @@ import (
 )
 
 const batchUpdateVulnerabilityData = `-- name: BatchUpdateVulnerabilityData :exec
-UPDATE vulnerabilities
+UPDATE vulnerability_data
 SET vulnerability_name = vuln->>'Name',
     vulnerability_description = vuln->>'Description',
     vulnerability_severity = vuln->>'Severity',
@@ -26,7 +26,7 @@ SET vulnerability_name = vuln->>'Name',
         ELSE ARRAY []::text []
     END
 FROM jsonb_array_elements($1::jsonb) AS vuln
-WHERE vulnerabilities.vulnerability_id = vuln->>'ID'
+WHERE vulnerability_data.vulnerability_id = vuln->>'VulnerabilityID'
 `
 
 func (q *Queries) BatchUpdateVulnerabilityData(ctx context.Context, vulnerabilities []byte) error {
@@ -35,138 +35,160 @@ func (q *Queries) BatchUpdateVulnerabilityData(ctx context.Context, vulnerabilit
 }
 
 const batchUpdateVulnerabilityState = `-- name: BatchUpdateVulnerabilityState :exec
-UPDATE vulnerabilities v
-SET vulnerability_state = CASE
-        WHEN vl.vulnerability_id IS NULL
-        AND v.vulnerability_state != 'Resolved' THEN 'Resolved'
-        WHEN vl.vulnerability_id IS NOT NULL
-        AND v.vulnerability_state = 'Resolved' THEN 'Resurfaced'
-        ELSE v.vulnerability_state
-    END
-FROM (
-        SELECT unnest($1::text []) AS vulnerability_id
-    ) AS vl
-WHERE v.vulnerability_id = vl.vulnerability_id
-    OR v.vulnerability_state != 'Resolved'
+WITH root_account AS (
+    SELECT COALESCE(
+            (
+                SELECT root_account_id
+                FROM iam_accounts
+                WHERE account_id = $1
+                LIMIT 1
+            ), $1
+        ) AS id
+),
+vuln_list_data AS (
+    SELECT vd.vulnerability_data_id
+    FROM unnest($2::text []) AS vuln_id
+        JOIN vulnerability_data vd ON vd.vulnerability_id = vuln_id
+),
+latest_state_history AS (
+    SELECT DISTINCT ON (vuln_data_id) vuln_data_id,
+        vulnerability_state
+    FROM vulnerability_state_history
+    WHERE root_account_id = (
+            SELECT id
+            FROM root_account
+        )
+    ORDER BY vuln_data_id,
+        state_changed_at DESC
+),
+insert_active_and_resurfaced AS (
+    INSERT INTO vulnerability_state_history (
+            vuln_data_id,
+            vulnerability_state,
+            root_account_id
+        )
+    SELECT vl.vulnerability_data_id,
+        CASE
+            WHEN lsh.vulnerability_state = 'New' THEN 'Active'::vulnstate
+            WHEN lsh.vulnerability_state = 'Resolved' THEN 'Resurfaced'::vulnstate
+        END,
+        (
+            SELECT id
+            FROM root_account
+        )
+    FROM vuln_list_data vl
+        JOIN latest_state_history lsh ON lsh.vuln_data_id = vl.vulnerability_data_id
+    WHERE lsh.vulnerability_state = 'New'
+        OR lsh.vulnerability_state = 'Resolved'
+),
+insert_new_and_resolved AS (
+    INSERT INTO vulnerability_state_history (
+            vuln_data_id,
+            vulnerability_state,
+            root_account_id
+        )
+    SELECT COALESCE(
+            vl.vulnerability_data_id,
+            lsh.vuln_data_id
+        ) AS vulnerability_data_id,
+        CASE
+            WHEN lsh.vuln_data_id IS NULL THEN 'New'::vulnstate
+            WHEN vl.vulnerability_data_id IS NULL THEN 'Resolved'::vulnstate
+        END AS state_change,
+        (
+            SELECT id
+            FROM root_account
+        )
+    FROM vuln_list_data vl
+        FULL OUTER JOIN latest_state_history lsh ON lsh.vuln_data_id = vl.vulnerability_data_id
+    WHERE (
+            lsh.vulnerability_state IS NULL
+            OR (
+                vl.vulnerability_data_id IS NULL
+                AND lsh.vulnerability_state != 'Resolved'
+            )
+        )
+)
+SELECT 1
 `
 
-func (q *Queries) BatchUpdateVulnerabilityState(ctx context.Context, vulnList []string) error {
-	_, err := q.db.Exec(ctx, batchUpdateVulnerabilityState, vulnList)
-	return err
+type BatchUpdateVulnerabilityStateParams struct {
+	AccountID pgtype.UUID
+	VulnList  []string
 }
 
-const calculateNewVulnerabilities = `-- name: CalculateNewVulnerabilities :exec
-SELECT id
-FROM unnest($2) AS current_vulns(id)
-WHERE id NOT IN (
-        SELECT avs.id
-        FROM asset_vulnerability_state avs
-            JOIN assets a ON a.asset_id = avs.asset_id
-            JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
-        WHERE avs.asset_id = $1
-    )
-`
-
-type CalculateNewVulnerabilitiesParams struct {
-	AssetID pgtype.UUID
-	Unnest  interface{}
-}
-
-func (q *Queries) CalculateNewVulnerabilities(ctx context.Context, arg CalculateNewVulnerabilitiesParams) error {
-	_, err := q.db.Exec(ctx, calculateNewVulnerabilities, arg.AssetID, arg.Unnest)
-	return err
-}
-
-const calculateNotAffectedVulnerabilities = `-- name: CalculateNotAffectedVulnerabilities :exec
-SELECT avs.vulnerability_id
-FROM asset_vulnerability_state avs
-    JOIN assets a ON a.asset_id = avs.asset_id
-    JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
-WHERE a.asset_id = $1
-    AND avs.id IN (
-        SELECT unnest($2)
-    )
-    AND vulnerability_state != 'resolved'
-`
-
-type CalculateNotAffectedVulnerabilitiesParams struct {
-	AssetID pgtype.UUID
-	Unnest  interface{}
-}
-
-func (q *Queries) CalculateNotAffectedVulnerabilities(ctx context.Context, arg CalculateNotAffectedVulnerabilitiesParams) error {
-	_, err := q.db.Exec(ctx, calculateNotAffectedVulnerabilities, arg.AssetID, arg.Unnest)
-	return err
-}
-
-const calculateResolvedVulnerabilities = `-- name: CalculateResolvedVulnerabilities :exec
-SELECT avs.vulnerability_id
-FROM asset_vulnerability_state avs
-    JOIN assets a ON a.asset_id = avs.asset_id
-    JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
-WHERE a.asset_id = $1
-    AND avs.id NOT IN (
-        SELECT unnest($2)
-    )
-    AND vulnerability_state != 'resolved'
-`
-
-type CalculateResolvedVulnerabilitiesParams struct {
-	AssetID pgtype.UUID
-	Unnest  interface{}
-}
-
-func (q *Queries) CalculateResolvedVulnerabilities(ctx context.Context, arg CalculateResolvedVulnerabilitiesParams) error {
-	_, err := q.db.Exec(ctx, calculateResolvedVulnerabilities, arg.AssetID, arg.Unnest)
-	return err
-}
-
-const calculateResurfacedVulnerabilities = `-- name: CalculateResurfacedVulnerabilities :exec
-SELECT avs.vulnerability_id
-FROM asset_vulnerability_state avs
-    JOIN assets a ON a.asset_id = avs.asset_id
-    JOIN vulnerabilities v ON v.vulnerability_id = avs.vulnerability_id
-WHERE a.asset_id = $1
-    AND avs.id IN (
-        SELECT unnest($2)
-    )
-    AND vulnerability_state = 'resolved'
-`
-
-type CalculateResurfacedVulnerabilitiesParams struct {
-	AssetID pgtype.UUID
-	Unnest  interface{}
-}
-
-func (q *Queries) CalculateResurfacedVulnerabilities(ctx context.Context, arg CalculateResurfacedVulnerabilitiesParams) error {
-	_, err := q.db.Exec(ctx, calculateResurfacedVulnerabilities, arg.AssetID, arg.Unnest)
+func (q *Queries) BatchUpdateVulnerabilityState(ctx context.Context, arg BatchUpdateVulnerabilityStateParams) error {
+	_, err := q.db.Exec(ctx, batchUpdateVulnerabilityState, arg.AccountID, arg.VulnList)
 	return err
 }
 
 const getVulnerabilities = `-- name: GetVulnerabilities :many
-SELECT vulnerability_uuid, vulnerability_id, vulnerability_name, vulnerability_description, vulnerability_severity, cvss_score, reference, created_on, last_modified, vulnerability_state
-FROM vulnerabilities
+WITH root_account AS (
+    SELECT COALESCE(
+            (
+                SELECT root_account_id
+                FROM iam_accounts
+                WHERE account_id = $1
+                LIMIT 1
+            ), $1
+        ) AS id
+),
+latest_state_history AS (
+    SELECT vuln_data_id,
+        vulnerability_state
+    FROM (
+            SELECT history_id, vuln_data_id, vulnerability_state, state_changed_at, root_account_id,
+                ROW_NUMBER() OVER (
+                    PARTITION BY vuln_data_id
+                    ORDER BY state_changed_at DESC
+                ) AS rn
+            FROM vulnerability_state_history
+            WHERE root_account_id = (
+                    SELECT id
+                    FROM root_account
+                )
+        ) latest
+    WHERE rn = 1
+)
+SELECT vulnerability_data_id, vulnerability_id, vulnerability_name, vulnerability_description, vulnerability_severity, reference, cvss_score, created_on, last_modified, vuln_data_id, vulnerability_state
+FROM vulnerability_data
+    JOIN latest_state_history lsh ON lsh.vuln_data_id = vulnerability_data.vulnerability_data_id
 `
 
-func (q *Queries) GetVulnerabilities(ctx context.Context) ([]Vulnerability, error) {
-	rows, err := q.db.Query(ctx, getVulnerabilities)
+type GetVulnerabilitiesRow struct {
+	VulnerabilityDataID      pgtype.UUID
+	VulnerabilityID          string
+	VulnerabilityName        pgtype.Text
+	VulnerabilityDescription pgtype.Text
+	VulnerabilitySeverity    pgtype.Text
+	Reference                []string
+	CvssScore                pgtype.Numeric
+	CreatedOn                pgtype.Timestamptz
+	LastModified             pgtype.Timestamptz
+	VulnDataID               pgtype.UUID
+	VulnerabilityState       Vulnstate
+}
+
+func (q *Queries) GetVulnerabilities(ctx context.Context, accountID pgtype.UUID) ([]GetVulnerabilitiesRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilities, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Vulnerability
+	var items []GetVulnerabilitiesRow
 	for rows.Next() {
-		var i Vulnerability
+		var i GetVulnerabilitiesRow
 		if err := rows.Scan(
-			&i.VulnerabilityUuid,
+			&i.VulnerabilityDataID,
 			&i.VulnerabilityID,
 			&i.VulnerabilityName,
 			&i.VulnerabilityDescription,
 			&i.VulnerabilitySeverity,
-			&i.CvssScore,
 			&i.Reference,
+			&i.CvssScore,
 			&i.CreatedOn,
 			&i.LastModified,
+			&i.VulnDataID,
 			&i.VulnerabilityState,
 		); err != nil {
 			return nil, err
@@ -179,13 +201,44 @@ func (q *Queries) GetVulnerabilities(ctx context.Context) ([]Vulnerability, erro
 	return items, nil
 }
 
+const getVulnerabilitiesStateHistory = `-- name: GetVulnerabilitiesStateHistory :many
+SELECT history_id, vuln_data_id, vulnerability_state, state_changed_at, root_account_id
+FROM vulnerability_state_history
+`
+
+func (q *Queries) GetVulnerabilitiesStateHistory(ctx context.Context) ([]VulnerabilityStateHistory, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitiesStateHistory)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VulnerabilityStateHistory
+	for rows.Next() {
+		var i VulnerabilityStateHistory
+		if err := rows.Scan(
+			&i.HistoryID,
+			&i.VulnDataID,
+			&i.VulnerabilityState,
+			&i.StateChangedAt,
+			&i.RootAccountID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertNewVulnerabilities = `-- name: InsertNewVulnerabilities :exec
-INSERT INTO vulnerabilities(vulnerability_id)
+INSERT INTO vulnerability_data(vulnerability_id)
 SELECT vulnerability_id
 FROM unnest($1::text []) AS vulnerability_id
 WHERE NOT EXISTS (
         SELECT 1
-        FROM vulnerabilities v
+        FROM vulnerability_data v
         WHERE v.vulnerability_id = vulnerability_id
     )
 `
@@ -195,23 +248,12 @@ func (q *Queries) InsertNewVulnerabilities(ctx context.Context, vulnList []strin
 	return err
 }
 
-const prepareVulnerabilityState = `-- name: PrepareVulnerabilityState :exec
-UPDATE vulnerabilities
-SET vulnerability_state = 'Active'
-WHERE vulnerability_state = 'New'
-`
-
-func (q *Queries) PrepareVulnerabilityState(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, prepareVulnerabilityState)
-	return err
-}
-
 const retrieveUnchangedVulnerabilities = `-- name: RetrieveUnchangedVulnerabilities :many
-SELECT v.vulnerability_id
+SELECT vd.vulnerability_id
 FROM unnest($1::text []) WITH ORDINALITY AS vuln(elem, ord)
     JOIN unnest($2::timestamptz []) WITH ORDINALITY AS mod(elem, ord) ON vuln.ord = mod.ord
-    JOIN vulnerabilities v ON v.vulnerability_id = vuln.elem
-WHERE v.last_modified >= mod.elem
+    JOIN vulnerability_data vd ON vd.vulnerability_id = vuln.elem
+WHERE vd.last_modified >= mod.elem
 `
 
 type RetrieveUnchangedVulnerabilitiesParams struct {
@@ -232,73 +274,6 @@ func (q *Queries) RetrieveUnchangedVulnerabilities(ctx context.Context, arg Retr
 			return nil, err
 		}
 		items = append(items, vulnerability_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updatePreviouslySeenVulnerabilities = `-- name: UpdatePreviouslySeenVulnerabilities :many
-WITH current_vulns AS (
-    SELECT unnest($3::text []) AS id
-),
-updated AS (
-    UPDATE asset_vulnerability_state avs
-    SET scan_id = $2,
-        vulnerability_state = CASE
-            WHEN v.id NOT IN (
-                SELECT id
-                FROM current_vulns
-            )
-            AND avs.vulnerability_state != 'Resolved' THEN 'Resolved'
-            WHEN v.id IN (
-                SELECT id
-                FROM current_vulns
-            )
-            AND avs.vulnerability_state = 'Resolved' THEN 'Resurfaced'
-            WHEN v.id IN (
-                SELECT id
-                FROM current_vulns
-            )
-            AND avs.vulnerability_state = 'New' THEN 'Active'
-            ELSE avs.vulnerability_state
-        END
-    FROM vulnerabilities v
-    WHERE avs.asset_id = $1
-        AND avs.vulnerability_id = v.vulnerability_id
-),
-new_vulns AS (
-    SELECT id
-    FROM current_vulns
-    WHERE id NOT IN (
-            SELECT id
-            FROM vulnerabilities
-        )
-)
-SELECT id::TEXT
-FROM new_vulns
-`
-
-type UpdatePreviouslySeenVulnerabilitiesParams struct {
-	AssetID  pgtype.UUID
-	ScanID   pgtype.UUID
-	VulnList []string
-}
-
-func (q *Queries) UpdatePreviouslySeenVulnerabilities(ctx context.Context, arg UpdatePreviouslySeenVulnerabilitiesParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, updatePreviouslySeenVulnerabilities, arg.AssetID, arg.ScanID, arg.VulnList)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,8 +43,13 @@ func setupTestDB(t *testing.T) (*Handler, *pgxpool.Pool) {
 }
 
 func cleanupTestDB(t *testing.T, conn *pgxpool.Pool) {
-	_, err := conn.Exec(context.Background(), "DROP TABLE IF EXISTS vulnerabilities, asset_vulnerability_state, scans, assets CASCADE;")
+	_, err := conn.Exec(context.Background(), "DROP TABLE IF EXISTS vulnerability_data, scans, assets, root_accounts CASCADE;")
 	require.NoError(t, err, "Failed to drop tables")
+	_, err = conn.Exec(context.Background(), "DROP TABLE IF EXISTS vulnerability_state_history CASCADE;")
+	require.NoError(t, err, "Failed to drop tables")
+	_, err = conn.Exec(context.Background(), "DROP TYPE VULNSTATE;")
+	require.NoError(t, err, "Failed to drop tables")
+
 }
 
 func MockGRPCOutputA(_ string, _ string) (string, error) {
@@ -70,6 +76,15 @@ func TestVulnerabilityQueries(t *testing.T) {
 	handler, conn := setupTestDB(t)
 	defer cleanupTestDB(t, conn)
 	ctx := context.Background()
+
+	param := query.CreateRootAccountParams{
+		Email:        "a@a.com",
+		Username:     "a",
+		PasswordHash: "",
+	}
+
+	rootAccount, err := handler.queries.CreateRootAccount(ctx, param)
+	assert.NoError(t, err)
 
 	layout := "2006-01-02T15:04:05.999999Z"
 
@@ -111,7 +126,7 @@ func TestVulnerabilityQueries(t *testing.T) {
 		},
 	}
 
-	err := handler.queries.InsertNewVulnerabilities(ctx, []string{"CVE-0001", "CVE-0002", "CVE-0003"})
+	err = handler.queries.InsertNewVulnerabilities(ctx, []string{"CVE-0001", "CVE-0002", "CVE-0003"})
 	assert.NoError(t, err)
 
 	vulnData, err := vuln.GetVulnerabilitiesJSON(existingVulns)
@@ -120,13 +135,70 @@ func TestVulnerabilityQueries(t *testing.T) {
 	err = handler.queries.BatchUpdateVulnerabilityData(ctx, vulnData)
 	assert.NoError(t, err)
 
-	vulnTable, err := handler.queries.GetVulnerabilities(ctx)
+	var vulnList []string
+	for _, vulns := range existingVulns {
+		vulnList = append(vulnList, vulns.ID)
+	}
+	paramB := query.BatchUpdateVulnerabilityStateParams{
+		AccountID: rootAccount.AccountID,
+		VulnList:  vulnList,
+	}
+
+	err = handler.queries.BatchUpdateVulnerabilityState(ctx, paramB)
+	assert.NoError(t, err)
+
+	paramB = query.BatchUpdateVulnerabilityStateParams{
+		AccountID: rootAccount.AccountID,
+		VulnList:  []string{"CVE-0001", "CVE-0002"},
+	}
+
+	err = handler.queries.BatchUpdateVulnerabilityState(ctx, paramB)
+	assert.NoError(t, err)
+
+	paramB = query.BatchUpdateVulnerabilityStateParams{
+		AccountID: rootAccount.AccountID,
+		VulnList:  []string{"CVE-0003"},
+	}
+
+	err = handler.queries.BatchUpdateVulnerabilityState(ctx, paramB)
+	assert.NoError(t, err)
+
+	paramB = query.BatchUpdateVulnerabilityStateParams{
+		AccountID: rootAccount.AccountID,
+		VulnList:  []string{"CVE-0003"},
+	}
+
+	err = handler.queries.BatchUpdateVulnerabilityState(ctx, paramB)
+	assert.NoError(t, err)
+
+	stateHistoryTable, err := handler.queries.GetVulnerabilitiesStateHistory(ctx)
+	assert.NoError(t, err)
+	for _, row := range stateHistoryTable {
+		t.Logf("%x - %s", row.VulnDataID.Bytes, row.VulnerabilityState)
+	}
+
+	_, err = handler.queries.GetVulnerabilitiesStateHistory(ctx)
+	assert.NoError(t, err)
+
+	// err = handler.queries.BatchUpdateVulnerabilityState(ctx, paramB)
+	// assert.NoError(t, err)
+
+	// stateHistoryTable, err := handler.queries.GetVulnerabilitiesStateHistory(ctx)
+	// assert.NoError(t, err)
+
+	// t.Log(len(stateHistoryTable))
+	// for _, row := range stateHistoryTable {
+	// 	t.Logf("%x - %s", row.VulnDataID.Bytes, row.VulnerabilityState)
+	// }
+
+	vulnTable, err := handler.queries.GetVulnerabilities(ctx, rootAccount.AccountID)
 	assert.NoError(t, err)
 
 	t.Log(len(vulnTable))
 	for _, row := range vulnTable {
 		// t.Logf("%v", row)
-		t.Logf("UUID: %x, ID: %v, State: %s", row.VulnerabilityUuid.Bytes, row.VulnerabilityID, row.VulnerabilityState)
+		// t.Logf("UUID: %x, ID: %v, State: %s, Root: %x", row.VulnerabilityDataID.Bytes, row.VulnerabilityID, row.VulnerabilityState, row.RootAccountID.Bytes)
+		t.Logf("ID: %v, State: %s", row.VulnerabilityID, row.VulnerabilityState)
 	}
 
 	vulns := query.RetrieveUnchangedVulnerabilitiesParams{
