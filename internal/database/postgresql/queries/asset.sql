@@ -1,4 +1,4 @@
--- name: GetAsset :one
+-- name: GetAssets :many
 SELECT * FROM assets
 WHERE root_account_id = $1;
 
@@ -52,3 +52,7 @@ SELECT
 FROM assets a
 JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1;
+-- name: GetIPByAssetID :one
+SELECT ip_address
+FROM assets
+WHERE asset_id = $1;
