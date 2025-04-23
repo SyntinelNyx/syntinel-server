@@ -1,4 +1,4 @@
--- name: GetAssets :one
+-- name: GetAsset :one
 SELECT * FROM assets
 WHERE root_account_id = $1;
 
@@ -41,3 +41,14 @@ INSERT INTO assets (
   $21, $22, (SELECT id FROM inserted_sysinfo), $23
 );
 
+-- name: GetAllAssets :many
+SELECT
+  a.asset_id,
+  s.hostname,
+  s.os,
+  s.platform_version,
+  a.ip_address,
+  s.created_at
+FROM assets a
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.root_account_id = $1;
