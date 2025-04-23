@@ -96,29 +96,9 @@ CREATE TABLE IF NOT EXISTS environment_assets (
 CREATE TABLE IF NOT EXISTS permission_templates (
   template_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   component_name VARCHAR(50) UNIQUE,
-  capabilities TEXT [] capabilities TEXT []
+  capabilities TEXT []
 );
 INSERT INTO permission_templates (component_name, capabilities)
-VALUES ('Overview', ARRAY ['View']),
-  ('Assets', ARRAY ['View', 'Create', 'Manage']),
-  ('Vulnerabilities', ARRAY ['View', 'Manage']),
-  (
-    'Environments',
-    ARRAY ['View', 'Create', 'Manage']
-  ),
-  ('Actions', ARRAY ['View', 'Create', 'Manage']),
-  ('Snapshots', ARRAY ['View', 'Create', 'Manage']),
-  ('Scans', ARRAY ['View', 'Create', 'Manage']),
-  (
-    'UserManagement',
-    ARRAY ['View', 'Create', 'Manage']
-  ),
-  (
-    'RoleManagement',
-    ARRAY ['View', 'Create', 'Manage']
-  ),
-  ('ApplicationConfig', ARRAY ['View', 'Manage']),
-  ('Logs', ARRAY ['View']) ON CONFLICT (component_name) DO NOTHING;
 VALUES ('Overview', ARRAY ['View']),
   ('Assets', ARRAY ['View', 'Create', 'Manage']),
   ('Vulnerabilities', ARRAY ['View', 'Manage']),
@@ -148,7 +128,6 @@ INSERT INTO permissions_new (permission_name)
 SELECT pt.component_name || '.' || cap_name AS permission_name
 FROM permission_templates pt
   CROSS JOIN unnest(pt.capabilities) AS cap_name ON CONFLICT (permission_name) DO NOTHING;
-CROSS JOIN unnest(pt.capabilities) AS cap_name ON CONFLICT (permission_name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS permissions (
   permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -182,12 +161,6 @@ CREATE TABLE IF NOT EXISTS iam_user_roles (
   PRIMARY KEY (iam_account_id, role_id),
   FOREIGN KEY (iam_account_id) REFERENCES iam_accounts (account_id),
   FOREIGN KEY (role_id) REFERENCES roles (role_id)
-);
-iam_account_id UUID NOT NULL,
-role_id UUID NOT NULL,
-PRIMARY KEY (iam_account_id, role_id),
-FOREIGN KEY (iam_account_id) REFERENCES iam_accounts (account_id),
-FOREIGN KEY (role_id) REFERENCES roles (role_id)
 );
 
 CREATE TABLE IF NOT EXISTS iam_user_permissions (
@@ -261,12 +234,6 @@ CREATE TABLE IF NOT EXISTS asset_vulnerability_scan (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable(
-    'asset_vulnerability_state',
-    by_range('scan_date'),
-    if_not_exists => TRUE,
-    migrate_data => TRUE
-  );
 SELECT create_hypertable(
     'asset_vulnerability_scan',
     by_range('scan_date'),
