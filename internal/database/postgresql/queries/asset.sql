@@ -1,4 +1,4 @@
--- name: GetAssets :one
+-- name: GetAssets :many
 SELECT * FROM assets
 WHERE root_account_id = $1;
 
@@ -40,4 +40,7 @@ INSERT INTO assets (
 ) VALUES (
   $21, $22, (SELECT id FROM inserted_sysinfo), $23
 );
-
+-- name: GetIPByAssetID :one
+SELECT ip_address
+FROM assets
+WHERE asset_id = $1;

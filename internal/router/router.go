@@ -17,6 +17,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
+	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
@@ -91,6 +92,11 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 				response.RespondWithJSON(w, http.StatusOK,
 					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
 			})
+
+			subRouter.Post ("/snapshots/create", snapshots.CreateSnapshot)
+			subRouter.Post("/snapshots/list", snapshots.RetrieveAllSnapshots)
+			subRouter.Post("/snapshots/restore", snapshots.RestoreSnapshot)
+
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
