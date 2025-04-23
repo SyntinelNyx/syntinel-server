@@ -16,6 +16,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
+	// "github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 func main() {
@@ -53,6 +54,13 @@ func main() {
 	// 	}
 	// 	logger.Info("Scan result: %v", resp)
 	// }()
+
+	// snapshots.ConnectKopiaS3Repository("5e99c364-cf6d-4b53-9b08-eb2f482a1df8", "1aa3c53d-935a-4e85-ae31-2db9e8e48f69", "kopia-test", "192.168.8.171:9000", "6OcL6Cbk8Vq03cthTyMn", "PSyMCjH3tFvMekIdTFb7eSxJk8qmAObGo2ROOWRQ", "cyber123")
+	// snapshots.CreateSnapshot("localhost:50051", "/home/rogueking/Documents/syntinel/test")
+	// snapshots.ListSnapshots("localhost:50051")
+	// snapshots.RestoreSnapshot("localhost:50051", "/home/rogueking/Documents/syntinel/test", "")
+
+	
 
 	certPath := filepath.Join(os.Getenv("DATA_PATH"), "server_cert.pem")
 	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "server_key.pem")
