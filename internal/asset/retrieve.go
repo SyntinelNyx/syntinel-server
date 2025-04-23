@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AssetDTO struct {
+type Asset struct {
 	AssetID         string `json:"assetId"`
 	Hostname        string `json:"hostname"`
 	Os              string `json:"os"`
@@ -25,14 +25,18 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	account := auth.GetClaims(r.Context())
-	if account.AccountType != "root" {
+	switch account.AccountType {
+	case "root":
+		rootId = account.AccountID
+	case "iam":
 		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
 		if err != nil {
 			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
 			return
 		}
-	} else {
-		rootId = account.AccountID
+	default:
+		response.RespondWithError(w, r, http.StatusBadRequest, "Failed to validate claims in JWT", err)
+		return
 	}
 
 	row, err := h.queries.GetAllAssets(context.Background(), rootId)
@@ -41,9 +45,9 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var assets []AssetDTO
+	var assets []Asset
 	for _, asset := range row {
-		assets = append(assets, AssetDTO{
+		assets = append(assets, Asset{
 			AssetID:         fmt.Sprintf("%x-%x-%x-%x-%x", asset.AssetID.Bytes[0:4], asset.AssetID.Bytes[4:6], asset.AssetID.Bytes[6:8], asset.AssetID.Bytes[8:10], asset.AssetID.Bytes[10:16]),
 			Hostname:        asset.Hostname.String,
 			Os:              asset.Os.String,
