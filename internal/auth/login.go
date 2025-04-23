@@ -45,15 +45,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var passwordHash string
 	var accountID pgtype.UUID
+	var accountUser string
+	var passwordHash string
 
 	if rootUser, ok := user.(query.RootAccount); ok {
 		passwordHash = rootUser.PasswordHash
 		accountID = rootUser.AccountID
+		accountUser = rootUser.Username
 	} else if iamUser, ok := user.(query.IamAccount); ok {
 		passwordHash = iamUser.PasswordHash
 		accountID = iamUser.AccountID
+		accountUser = iamUser.Username
 	} else {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Unexpected Account Type", fmt.Errorf("unexpected account type"))
 		return
@@ -64,13 +67,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accountId, err := accountID.Value()
-	if err != nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed To Parse UUID", err)
-		return
-	}
-
-	accessToken, err := generateAccessToken(accountId, request.AccountType)
+	accessToken, err := generateAccessToken(accountID, request.AccountType, accountUser)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Could Not Generate Access Token", err)
 		return

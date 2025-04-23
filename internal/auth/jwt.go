@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"database/sql/driver"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth/key"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
@@ -24,8 +24,9 @@ var ClaimsContextKey = claimsKeyType{}
 var CSRFSecret = []byte(os.Getenv("CSRF_SECRET"))
 
 type Claims struct {
-	AccountID   string
+	AccountID   pgtype.UUID
 	AccountType string
+	AccountUser string
 	jwt.RegisteredClaims
 }
 
@@ -59,13 +60,13 @@ func generateCSRFToken() (string, error) {
 	}
 
 	return tokenString, nil
-
 }
 
-func generateAccessToken(accountId driver.Value, accountType string) (string, error) {
+func generateAccessToken(accountId pgtype.UUID, accountType, accountUser string) (string, error) {
 	claims := &Claims{
-		AccountID:   accountId.(string),
+		AccountID:   accountId,
 		AccountType: accountType,
+		AccountUser: accountUser,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "syntinel-server",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/agent"
+	"github.com/SyntinelNyx/syntinel-server/internal/asset"
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/limiter"
@@ -61,12 +61,12 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		apiRouter.Group(func(subRouter chi.Router) {
 			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 30))
 
-			agentHandler := agent.NewHandler(r.queries)
+			assetHandler := asset.NewHandler(r.queries)
 
-			subRouter.Get("/coffee", func(w http.ResponseWriter, req *http.Request) {
+			subRouter.Get("/coffee", func(w http.ResponseWriter, r *http.Request) {
 				response.RespondWithJSON(w, http.StatusTeapot, map[string]string{"error": "I'm A Teapot!"})
 			})
-			subRouter.Post("/agent/enroll", agentHandler.Enroll)
+			subRouter.Post("/agent/enroll", assetHandler.Enroll)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
@@ -83,14 +83,12 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
+			assetHandler := asset.NewHandler(r.queries)
+
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
-			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
-				account := auth.GetClaims(req.Context())
-				response.RespondWithJSON(w, http.StatusOK,
-					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
-			})
+			subRouter.Get("/assets", assetHandler.Retrieve)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
@@ -104,10 +102,16 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
-			subRouter.Get("/auth/validate", func(w http.ResponseWriter, req *http.Request) {
-				account := auth.GetClaims(req.Context())
+			subRouter.Get("/auth/validate", func(w http.ResponseWriter, r *http.Request) {
+				account := auth.GetClaims(r.Context())
+				val, err := account.AccountID.Value()
+				if err != nil {
+					response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to parse UUID", err)
+					return
+				}
+
 				response.RespondWithJSON(w, http.StatusOK,
-					map[string]string{"account_id": account.AccountID, "account_type": account.AccountType})
+					map[string]string{"accountId": val.(string), "accountType": account.AccountType, "accountUser": account.AccountUser})
 			})
 			subRouter.Post("/auth/logout", authHandler.Logout)
 		})
