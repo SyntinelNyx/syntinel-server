@@ -117,6 +117,7 @@ SELECT
   s.created_at
 FROM assets a
 JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.root_account_id = $1
 `
 
 type GetAllAssetsRow struct {
@@ -128,8 +129,8 @@ type GetAllAssetsRow struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
-func (q *Queries) GetAllAssets(ctx context.Context) ([]GetAllAssetsRow, error) {
-	rows, err := q.db.Query(ctx, getAllAssets)
+func (q *Queries) GetAllAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]GetAllAssetsRow, error) {
+	rows, err := q.db.Query(ctx, getAllAssets, rootAccountID)
 	if err != nil {
 		return nil, err
 	}

@@ -50,4 +50,5 @@ SELECT
   a.ip_address,
   s.created_at
 FROM assets a
-JOIN system_information s ON a.sysinfo_id = s.id;
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.root_account_id = $1;

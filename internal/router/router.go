@@ -109,7 +109,6 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 					response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to parse UUID", err)
 					return
 				}
-
 				response.RespondWithJSON(w, http.StatusOK,
 					map[string]string{"accountId": val.(string), "accountType": account.AccountType, "accountUser": account.AccountUser})
 			})

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
@@ -19,7 +20,8 @@ type AssetDTO struct {
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
-	row, err := h.queries.GetAllAssets(context.Background())
+	account := auth.GetClaims(r.Context())
+	row, err := h.queries.GetAllAssets(context.Background(), account.AccountID)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error when retrieving assets information", err)
 		return
