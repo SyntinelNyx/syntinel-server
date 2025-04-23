@@ -8,6 +8,7 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -211,4 +212,35 @@ func TestVulnerabilityQueries(t *testing.T) {
 
 	t.Log(unchangedVulns)
 	assert.Equal(t, []string{"CVE-0003"}, unchangedVulns)
+}
+
+func TestScan(t *testing.T) {
+	if os.Getenv("NONLOCAL_TESTS") != "" {
+		t.Skip("Skipping test meant for local environments.")
+	}
+
+	if err := godotenv.Load("../../.env"); err != nil {
+		t.Fatal("Error loading .env file")
+	}
+
+	dbURL := os.Getenv("DATABASE_URL")
+
+	if dbURL == "" {
+		t.Fatal("DATABASE_URL environment variable not set")
+	}
+
+	queries, _, err := database.InitDatabaseWithURL(dbURL)
+	require.NoError(t, err, "Failed to initialize database")
+
+	database.RunMigration()
+	handler := NewHandler(queries)
+	ctx := context.Background()
+
+	rootAccount, err := handler.queries.GetRootAccountByUsername(ctx, "test")
+	assert.NoError(t, err)
+
+	scanner, _ := strategies.GetScanner("trivy")
+	err = handler.LaunchScan("trivy", scanner.DefaultFlags(), rootAccount.AccountID, "root")
+	assert.NoError(t, err)
+
 }
