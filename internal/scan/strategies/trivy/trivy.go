@@ -3,6 +3,7 @@ package trivy
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	base "github.com/SyntinelNyx/syntinel-server/internal/scan/strategies/base"
@@ -66,8 +67,14 @@ func GetCVSSScore(cvssMap map[string]struct{ Score float64 }) float64 {
 func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, error) {
 	// Source: https://gobyexample.com/json
 	var output TrivyOutput
+
+	index := strings.Index(jsonOutput, "{")
+	if index != -1 {
+		jsonOutput = jsonOutput[index:]
+	}
+
 	if err := json.Unmarshal([]byte(jsonOutput), &output); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error Unmarshal: %s", err)
 	}
 
 	var results []vuln.Vulnerability

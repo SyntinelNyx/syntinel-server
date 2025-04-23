@@ -17,11 +17,16 @@ VALUES (
 RETURNING scan_id;
 
 -- name: BatchUpdateAVS :exec
-INSERT INTO asset_vulnerability_scan (root_account_id, scan_id, asset_id, vuln_id)
+INSERT INTO asset_vulnerability_scan (
+        root_account_id,
+        scan_id,
+        asset_id,
+        vulnerability_id
+    )
 SELECT s.root_account_id,
     $1 AS scan_id,
     $2 AS asset_id,
-    vd.vulnerability_id AS vuln_id
+    vd.vulnerability_data_id AS vulnerability_id
 FROM unnest(@vuln_list::text []) AS id
     JOIN vulnerability_data vd ON vd.vulnerability_id = id
     JOIN scans s ON s.scan_id = $1;

@@ -75,7 +75,6 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 				Payload: payload,
 			},
 		}
-
 		responses, err := commands.Command(fmt.Sprintf("%s:50051", asset.IpAddress.String()), controlMessages)
 		if err != nil {
 			return err
@@ -83,7 +82,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 		vulnerabilitiesList, err := scanner.ParseResults(responses[0].Result)
 		if err != nil {
-			return errors.New("error parsing results")
+			return fmt.Errorf("error parsing results: %s", err)
 		}
 
 		var currentVulnIDs []string
@@ -138,6 +137,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 			changedVulns = append(changedVulns, vulnData)
 		}
 	}
+
 	param := query.BatchUpdateVulnerabilityStateParams{
 		AccountID: accountID,
 		VulnList:  vulnIDs,
@@ -150,8 +150,10 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		return err
 	}
 
-	if err := h.queries.BatchUpdateVulnerabilityData(ctx, vulnJSON); err != nil {
-		return err
+	if len(changedVulns) != 0 {
+		if err := h.queries.BatchUpdateVulnerabilityData(ctx, vulnJSON); err != nil {
+			return err
+		}
 	}
 
 	return nil
