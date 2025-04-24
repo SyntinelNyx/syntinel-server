@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
@@ -75,7 +76,20 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 				Payload: payload,
 			},
 		}
-		responses, err := commands.Command("[::1]:50051", controlMessages)
+
+		var target string
+
+		ip := net.ParseIP(asset.IpAddress.String())
+		if ip == nil {
+			return fmt.Errorf("invalid ip address")
+		}
+		if ip.To4() != nil {
+			target = fmt.Sprintf("%s:50051", asset.IpAddress)
+		} else {
+			target = fmt.Sprintf("[%s]:50051", asset.IpAddress)
+		}
+
+		responses, err := commands.Command(target, controlMessages)
 		if err != nil {
 			return err
 		}

@@ -36,7 +36,6 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 		}
 
 		scansList = append(scansList, resp)
-
 	}
 
 	response.RespondWithJSON(w, http.StatusOK, scansList)

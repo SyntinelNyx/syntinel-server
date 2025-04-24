@@ -31,6 +31,7 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 	vulnList := []vulnResponse{}
 	for _, vuln := range vulns {
 		cvssScore, _ := vuln.CvssScore.Int.Float64()
+		cvssScore = cvssScore / 100
 		resp := vulnResponse{
 			VulnerabilityUUID: fmt.Sprintf("%x", vuln.VulnerabilityDataID.Bytes),
 			VulnerabilityID:   vuln.VulnerabilityID,
@@ -42,7 +43,6 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 		}
 
 		vulnList = append(vulnList, resp)
-
 	}
 
 	response.RespondWithJSON(w, http.StatusOK, vulnList)
