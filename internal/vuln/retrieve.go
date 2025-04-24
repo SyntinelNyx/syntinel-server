@@ -1,6 +1,7 @@
 package vuln
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,12 +10,13 @@ import (
 )
 
 type vulnResponse struct {
-	VulnerabilityID string   `json:"vulnerability_id"`
-	Status          string   `json:"status"`
-	Severity        string   `json:"severity"`
-	Cvss            float64  `json:"cvss"`
-	AssetsAffected  []string `json:"assets_affected"`
-	LastSeen        string   `json:"last_seen"`
+	VulnerabilityUUID string   `json:"id"`
+	VulnerabilityID   string   `json:"vulnerability"`
+	Status            string   `json:"status"`
+	Severity          string   `json:"severity"`
+	Cvss              float64  `json:"cvss"`
+	AssetsAffected    []string `json:"assetsAffected"`
+	LastSeen          string   `json:"lastSeen"`
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
@@ -30,12 +32,13 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 	for _, vuln := range vulns {
 		cvssScore, _ := vuln.CvssScore.Int.Float64()
 		resp := vulnResponse{
-			VulnerabilityID: vuln.VulnerabilityID,
-			Status:          string(vuln.VulnState),
-			Severity:        vuln.VulnerabilitySeverity.String,
-			Cvss:            cvssScore,
-			AssetsAffected:  vuln.AssetsAffected,
-			LastSeen:        vuln.LastSeen.Time.Format(time.RFC3339),
+			VulnerabilityUUID: fmt.Sprintf("%x", vuln.VulnerabilityDataID.Bytes),
+			VulnerabilityID:   vuln.VulnerabilityID,
+			Status:            string(vuln.VulnerabilityState),
+			Severity:          vuln.VulnerabilitySeverity.String,
+			Cvss:              cvssScore,
+			AssetsAffected:    vuln.AssetsAffected,
+			LastSeen:          vuln.StateChangedAt.Time.Format(time.RFC3339),
 		}
 
 		vulnList = append(vulnList, resp)

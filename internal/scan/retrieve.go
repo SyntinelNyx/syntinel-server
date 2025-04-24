@@ -10,10 +10,10 @@ import (
 )
 
 type scanResponse struct {
-	ScanID      string `json:"scan_id"`
-	ScanDate    string `json:"scan_date"`
-	ScannerName string `json:"scanner_name"`
-	ScannedBy   string `json:"scanned_by"`
+	ScanID      string `json:"id"`
+	ScanDate    string `json:"scanDate"`
+	ScannerName string `json:"scannerName"`
+	ScannedBy   string `json:"scannedBy"`
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {

@@ -64,7 +64,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 	allVulnsSeen := make(map[string]vuln.Vulnerability)
 
 	for _, asset := range assets {
-		payload, err := scanner.CalculateCommand(asset.Os.String, "/", flags)
+		payload, err := scanner.CalculateCommand(asset.Os.String, "../../", flags)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 				Payload: payload,
 			},
 		}
-		responses, err := commands.Command(fmt.Sprintf("%s:50051", asset.IpAddress.String()), controlMessages)
+		responses, err := commands.Command("[::1]:50051", controlMessages)
 		if err != nil {
 			return err
 		}

@@ -26,6 +26,7 @@ var CSRFSecret = []byte(os.Getenv("CSRF_SECRET"))
 type Claims struct {
 	AccountID   pgtype.UUID
 	AccountType string
+	AccountUser string
 	jwt.RegisteredClaims
 }
 
@@ -59,13 +60,13 @@ func generateCSRFToken() (string, error) {
 	}
 
 	return tokenString, nil
-
 }
 
-func generateAccessToken(accountID pgtype.UUID, accountType string) (string, error) {
+func generateAccessToken(accountId pgtype.UUID, accountType, accountUser string) (string, error) {
 	claims := &Claims{
-		AccountID:   accountID,
+		AccountID:   accountId,
 		AccountType: accountType,
+		AccountUser: accountUser,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "syntinel-server",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
