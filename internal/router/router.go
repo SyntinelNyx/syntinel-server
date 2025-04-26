@@ -91,11 +91,6 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
 
-			subRouter.Post ("/snapshots/create", snapshots.CreateSnapshot)
-			subRouter.Post("/snapshots/list", snapshots.RetrieveAllSnapshots)
-			subRouter.Post("/snapshots/restore", snapshots.RestoreSnapshot)
-
-
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
