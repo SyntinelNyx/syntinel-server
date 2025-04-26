@@ -8,6 +8,7 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
+	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
@@ -16,13 +17,14 @@ import (
 
 type CreateSnapshotRequest struct {
 	Path    string      `json:"path"`
-	AssetID pgtype.UUID `json:"asset_id"`
+	AssetID string 		`json:"asset_id"`
 }
 
-func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request, arg GetIPByAssetIDParams ) {
+func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	var CreateSnapshotRequest CreateSnapshotRequest
 
-	var rootId pgtype.UUID
+	var rootID pgtype.UUID
+	var assetID pgtype.UUID
 	var err error
 
 	decoder := json.NewDecoder(r.Body)
@@ -34,18 +36,24 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request, arg Get
 
 	account := auth.GetClaims(r.Context())
 	if account.AccountType != "root" {
-		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
+		rootID, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
 		if err != nil {
 			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
 			return
 		}
 	} else {
-		rootId = account.AccountID
+		rootID = account.AccountID
 	}
 
-	params := h.queries.GetIPByAssetIDParams{
-		AssetID:       CreateSnapshotRequest.AssetID, // Convert UUID to string if needed
-		RootAccountID: rootId,
+	uuidString := fmt.Sprintf("%s-%s-%s-%s-%s", CreateSnapshotRequest.AssetID[0:8], CreateSnapshotRequest.AssetID[8:12], CreateSnapshotRequest.AssetID[12:16], CreateSnapshotRequest.AssetID[16:20], CreateSnapshotRequest.AssetID[20:])
+	if err := assetID.Set(uuidString); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
+		return
+	}
+
+	params := query.GetIPByAssetIDParams{
+		AssetID:       assetID, 
+		RootAccountID: rootID,
 	}
 
 	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
@@ -55,11 +63,6 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request, arg Get
 	}
 
 	ConnectKopiaS3Repository(agentip.String())
-
-	if err := json.NewDecoder(r.Body).Decode(&CreateSnapshotRequest); err != nil {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
-		return
-	}
 
 	controlMessages := []*controlpb.ControlMessage{
 		{
