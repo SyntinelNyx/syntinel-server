@@ -8,13 +8,14 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
+	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Snapshot struct {
+type ListSnapshotRequest struct {
 	ID        string `json:"id"`
 	Host      string `json:"host"`
 	Path      string `json:"path"`
@@ -23,16 +24,17 @@ type Snapshot struct {
 	AssetID   string `json:"assetId"`
 }
 
-func ListSnapshots(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 
-	var CreateSnapshotRequest CreateSnapshotRequest
+	var ListSnapshotRequest ListSnapshotRequest
 
 	var rootId pgtype.UUID
+	var assetID pgtype.UUID
 	var err error
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&CreateSnapshotRequest); err != nil {
+	if err := decoder.Decode(&ListSnapshotRequest); err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
 		return
 	}
@@ -48,23 +50,24 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		rootId = account.AccountID
 	}
 
-	assetIDs := h.queries.GetIPByAssetIDParams{
-		RootAccountID: rootId,
-		AssetID:       CreateSnapshotRequest.AssetID,
+	uuidString := fmt.Sprintf("%s-%s-%s-%s-%s", ListSnapshotRequest.AssetID[0:8], ListSnapshotRequest.AssetID[8:12], ListSnapshotRequest.AssetID[12:16], ListSnapshotRequest.AssetID[16:20], ListSnapshotRequest.AssetID[20:])
+	if err := assetID.Set(uuidString); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
+		return
 	}
 
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), assetIDs)
+	params := query.GetIPByAssetIDParams{
+		AssetID:       assetID, // Convert UUID to string if needed
+		RootAccountID: rootId,
+	}
+
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
 		return
 	}
 
 	ConnectKopiaS3Repository(agentip.String())
-
-	if err := json.NewDecoder(r.Body).Decode(&CreateSnapshotRequest); err != nil {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
-		return
-	}
 
 	controlMessages := []*controlpb.ControlMessage{
 		{
@@ -73,7 +76,7 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	responses, err := commands.Command(agentip, controlMessages)
+	responses, err := commands.Command(agentip.String(), controlMessages)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Error listing snapshots: %v", err)
 	}
@@ -111,11 +114,8 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			response.RespondWithError(w, r, http.StatusBadRequest, "error formatting snapshots: %v", err)
 		}
-
-		return string(filteredJSON), nil
+		response.RespondWithJSON(w, http.StatusOK, filteredJSON)
 	}
-
-	return "", nil
 }
 
 // func ListAllSnapshots(w http.ResponseWriter, r *http.Request) {
