@@ -22,7 +22,9 @@ subjectAltName          = @server_alt_names
 [server_alt_names]
 DNS.1 = *.syntinel.dev
 DNS.2 = localhost
+DNS.3 = buildbox
 IP.1 = 127.0.0.1
+IP.2 = 192.168.8.222
 
 [test_client]
 basicConstraints        = critical,CA:FALSE

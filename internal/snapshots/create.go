@@ -15,14 +15,22 @@ import (
 )
 
 type CreateSnapshotRequest struct {
-	Path string `json:"path"`
+	Path    string      `json:"path"`
+	AssetID pgtype.UUID `json:"asset_id"`
 }
 
-func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	var request CreateSnapshotRequest
+func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request, arg GetIPByAssetIDParams ) {
+	var CreateSnapshotRequest CreateSnapshotRequest
 
 	var rootId pgtype.UUID
 	var err error
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&CreateSnapshotRequest); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
+		return
+	}
 
 	account := auth.GetClaims(r.Context())
 	if account.AccountType != "root" {
@@ -35,36 +43,32 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 		rootId = account.AccountID
 	}
 
-	// row, err := h.queries.GetAllAssets(context.Background(), rootId)
-	// if err != nil {
-	// 	response.RespondWithError(w, r, http.StatusInternalServerError, "Error when retrieving assets information", err)
-	// 	return
-	// }
-
-	
-
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), rootId, agentID)
-	if err != nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP: %v", err)
+	params := h.queries.GetIPByAssetIDParams{
+		AssetID:       CreateSnapshotRequest.AssetID, // Convert UUID to string if needed
+		RootAccountID: rootId,
 	}
 
-	ConnectKopiaS3Repository(rootAccountID, agentID)
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
+	if err != nil {
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
+		return
+	}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	ConnectKopiaS3Repository(agentip.String())
+
+	if err := json.NewDecoder(r.Body).Decode(&CreateSnapshotRequest); err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
 		return
 	}
 
-	path := request.Path
-
 	controlMessages := []*controlpb.ControlMessage{
 		{
 			Command: "exec",
-			Payload: fmt.Sprintf("kopia snapshot create %s", path),
+			Payload: fmt.Sprintf("kopia snapshot create %s", CreateSnapshotRequest.Path),
 		},
 	}
 
-	responses, err := commands.Command(agentip, controlMessages)
+	responses, err := commands.Command(agentip.String(), controlMessages)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to create snapshot", err)
 	}

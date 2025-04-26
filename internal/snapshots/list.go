@@ -1,13 +1,17 @@
 package snapshots
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
+	"github.com/SyntinelNyx/syntinel-server/internal/response"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Snapshot struct {
@@ -16,9 +20,52 @@ type Snapshot struct {
 	Path      string `json:"path"`
 	StartTime string `json:"startTime"`
 	EndTime   string `json:"endTime"`
+	AssetID   string `json:"assetId"`
 }
 
 func ListSnapshots(w http.ResponseWriter, r *http.Request) {
+
+	var CreateSnapshotRequest CreateSnapshotRequest
+
+	var rootId pgtype.UUID
+	var err error
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&CreateSnapshotRequest); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
+		return
+	}
+
+	account := auth.GetClaims(r.Context())
+	if account.AccountType != "root" {
+		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
+		if err != nil {
+			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
+			return
+		}
+	} else {
+		rootId = account.AccountID
+	}
+
+	assetIDs := h.queries.GetIPByAssetIDParams{
+		RootAccountID: rootId,
+		AssetID:       CreateSnapshotRequest.AssetID,
+	}
+
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), assetIDs)
+	if err != nil {
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
+		return
+	}
+
+	ConnectKopiaS3Repository(agentip.String())
+
+	if err := json.NewDecoder(r.Body).Decode(&CreateSnapshotRequest); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
+		return
+	}
+
 	controlMessages := []*controlpb.ControlMessage{
 		{
 			Command: "exec",
@@ -28,7 +75,7 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 
 	responses, err := commands.Command(agentip, controlMessages)
 	if err != nil {
-		return "", fmt.Errorf("Error listing snapshots: %v", err)
+		response.RespondWithError(w, r, http.StatusBadRequest, "Error listing snapshots: %v", err)
 	}
 
 	// Process the response and return uuid and result
@@ -43,7 +90,7 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		var snapshots []map[string]interface{}
 		err := json.Unmarshal([]byte(result), &snapshots)
 		if err != nil {
-			return "", fmt.Errorf("error parsing snapshot JSON: %v", err)
+			response.RespondWithError(w, r, http.StatusBadRequest, "error parsing snapshot JSON: %v", err)
 		}
 
 		// Create a filtered response with only the important fields
@@ -62,7 +109,7 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		// Marshal the filtered data back to JSON
 		filteredJSON, err := json.MarshalIndent(filteredSnapshots, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("error formatting filtered snapshots: %v", err)
+			response.RespondWithError(w, r, http.StatusBadRequest, "error formatting snapshots: %v", err)
 		}
 
 		return string(filteredJSON), nil
@@ -70,3 +117,37 @@ func ListSnapshots(w http.ResponseWriter, r *http.Request) {
 
 	return "", nil
 }
+
+// func ListAllSnapshots(w http.ResponseWriter, r *http.Request) {
+// 	controlMessages := []*controlpb.ControlMessage{
+// 		{
+// 			Command: "exec",
+// 			Payload: fmt.Sprintf("kopia snapshot list --json"),
+// 		},
+// 	}
+
+// 	responses, err := commands.Command(agentip, controlMessages)
+// 	if err != nil {
+// 		response.RespondWithError(w, r, http.StatusBadRequest, "Error listing snapshots: %v", err)
+// 	}
+
+// 	// Process the response and return uuid and result
+// 	if len(responses) > 0 {
+// 		uuid := responses[0].GetUuid()
+// 		result := responses[0].GetResult()
+
+// 		// Log for debugging
+// 		logger.Info("kopia list - UUID: %s, Result: %s", uuid, result)
+
+// 		// Parse the JSON result
+// 		var snapshots []Snapshot
+// 		err := json.Unmarshal([]byte(result), &snapshots)
+// 		if err != nil {
+// 			response.RespondWithError(w, r, http.StatusBadRequest, "error parsing snapshot JSON: %v", err)
+// 		}
+
+// 		return snapshots, nil
+// 	}
+
+// 	return nil, nil
+// }
