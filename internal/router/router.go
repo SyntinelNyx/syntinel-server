@@ -17,7 +17,6 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
-	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
