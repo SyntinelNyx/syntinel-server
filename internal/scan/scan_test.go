@@ -2,7 +2,9 @@ package scan
 
 import (
 	"context"
+	"net/netip"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -52,26 +55,6 @@ func cleanupTestDB(t *testing.T, conn *pgxpool.Pool) {
 	_, err = conn.Exec(context.Background(), "DROP TYPE VULNSTATE;")
 	require.NoError(t, err, "Failed to drop tables")
 
-}
-
-func MockGRPCOutputA(_ string, _ string) (string, error) {
-	data, err := os.ReadFile("strategies/small_test.json")
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
-}
-
-func MockGRPCOutputB(_ string, _ string) (string, error) {
-	data, err := os.ReadFile("strategies/test.json")
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
 }
 
 func TestVulnerabilityQueries(t *testing.T) {
@@ -213,6 +196,220 @@ func TestVulnerabilityQueries(t *testing.T) {
 
 	t.Log(unchangedVulns)
 	assert.Equal(t, []string{"CVE-0003"}, unchangedVulns)
+
+	vulnTableFront, err := handler.queries.RetrieveVulnTable(ctx, rootAccount.AccountID)
+	assert.NoError(t, err)
+
+	for _, vulnTableFrontRow := range vulnTableFront {
+		t.Logf("Vulnerability: %s", vulnTableFrontRow.VulnerabilityID)
+	}
+}
+
+func TestMultipleAssets(t *testing.T) {
+	handler, conn := setupTestDB(t)
+	defer cleanupTestDB(t, conn)
+	ctx := context.Background()
+
+	param := query.CreateRootAccountParams{
+		Email:        "a@a.com",
+		Username:     "a",
+		PasswordHash: "",
+	}
+
+	rootAccount, err := handler.queries.CreateRootAccount(ctx, param)
+	assert.NoError(t, err)
+
+	assetA := query.AddAssetParams{
+		Hostname:             pgtype.Text{String: "dummy-hostA", Valid: true},
+		Uptime:               pgtype.Int8{Int64: 123456, Valid: true},
+		BootTime:             pgtype.Int8{Int64: 1617181920, Valid: true},
+		Procs:                pgtype.Int8{Int64: 256, Valid: true},
+		Os:                   pgtype.Text{String: "DummyOS", Valid: true},
+		Platform:             pgtype.Text{String: "DummyPlatform", Valid: true},
+		PlatformFamily:       pgtype.Text{String: "DummyFamily", Valid: true},
+		PlatformVersion:      pgtype.Text{String: "1.0.0", Valid: true},
+		KernelVersion:        pgtype.Text{String: "5.10.0", Valid: true},
+		KernelArch:           pgtype.Text{String: "x86_64", Valid: true},
+		VirtualizationSystem: pgtype.Text{String: "kvm", Valid: true},
+		VirtualizationRole:   pgtype.Text{String: "guest", Valid: true},
+		HostID:               pgtype.Text{String: "host-id-1234", Valid: true},
+		CpuVendorID:          pgtype.Text{String: "GenuineIntel", Valid: true},
+		CpuCores:             pgtype.Int4{Int32: 8, Valid: true},
+		CpuModelName:         pgtype.Text{String: "Intel(R) Core(TM) i7", Valid: true},
+		CpuMhz:               pgtype.Float8{Float64: 2800.00, Valid: true},
+		CpuCacheSize:         pgtype.Int4{Int32: 8192, Valid: true},
+		Memory:               pgtype.Int8{Int64: 16777216, Valid: true},
+		Disk:                 pgtype.Int8{Int64: 512000, Valid: true},
+		AssetID:              pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		IpAddress:            netip.MustParseAddr("192.168.1.1"),
+		RootAccountID:        rootAccount.AccountID,
+	}
+
+	assetB := query.AddAssetParams{
+		Hostname:             pgtype.Text{String: "dummy-hostB", Valid: true},
+		Uptime:               pgtype.Int8{Int64: 123456, Valid: true},
+		BootTime:             pgtype.Int8{Int64: 1617181920, Valid: true},
+		Procs:                pgtype.Int8{Int64: 256, Valid: true},
+		Os:                   pgtype.Text{String: "DummyOS", Valid: true},
+		Platform:             pgtype.Text{String: "DummyPlatform", Valid: true},
+		PlatformFamily:       pgtype.Text{String: "DummyFamily", Valid: true},
+		PlatformVersion:      pgtype.Text{String: "1.0.0", Valid: true},
+		KernelVersion:        pgtype.Text{String: "5.10.0", Valid: true},
+		KernelArch:           pgtype.Text{String: "x86_64", Valid: true},
+		VirtualizationSystem: pgtype.Text{String: "kvm", Valid: true},
+		VirtualizationRole:   pgtype.Text{String: "guest", Valid: true},
+		HostID:               pgtype.Text{String: "host-id-1234", Valid: true},
+		CpuVendorID:          pgtype.Text{String: "GenuineIntel", Valid: true},
+		CpuCores:             pgtype.Int4{Int32: 8, Valid: true},
+		CpuModelName:         pgtype.Text{String: "Intel(R) Core(TM) i7", Valid: true},
+		CpuMhz:               pgtype.Float8{Float64: 2800.00, Valid: true},
+		CpuCacheSize:         pgtype.Int4{Int32: 8192, Valid: true},
+		Memory:               pgtype.Int8{Int64: 16777216, Valid: true},
+		Disk:                 pgtype.Int8{Int64: 512000, Valid: true},
+		AssetID:              pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		IpAddress:            netip.MustParseAddr("192.168.1.2"),
+		RootAccountID:        rootAccount.AccountID,
+	}
+
+	err = handler.queries.AddAsset(ctx, assetA)
+	assert.NoError(t, err)
+
+	err = handler.queries.AddAsset(ctx, assetB)
+	assert.NoError(t, err)
+
+	assetsTable, err := handler.queries.GetAllAssets(ctx, rootAccount.AccountID)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "dummy-hostA", assetsTable[0].Hostname.String)
+	assert.Equal(t, "dummy-hostB", assetsTable[1].Hostname.String)
+
+	scanParam := query.CreateScanEntryRootParams{
+		ScannerName:   "trivy",
+		RootAccountID: rootAccount.AccountID,
+	}
+
+	assetAVulnerabilities := []vuln.Vulnerability{
+		{
+			ID:           "VULN-001",
+			Name:         "Dummy Vulnerability One",
+			Description:  "This is a dummy description for vulnerability one.",
+			Severity:     "High",
+			CVSSScore:    8.5,
+			CreatedOn:    time.Now().AddDate(0, -1, 0),
+			LastModified: time.Now(),
+			References:   []string{"http://example.com/vuln1", "http://example.com/vuln1-docs"},
+		},
+		{
+			ID:           "VULN-002",
+			Name:         "Dummy Vulnerability Two",
+			Description:  "This is a dummy description for vulnerability two.",
+			Severity:     "Medium",
+			CVSSScore:    5.4,
+			CreatedOn:    time.Now().AddDate(0, -2, 0),
+			LastModified: time.Now(),
+			References:   []string{"http://example.com/vuln2"},
+		},
+	}
+
+	assetBVulnerabilities := []vuln.Vulnerability{
+		{
+			ID:           "VULN-002",
+			Name:         "Dummy Vulnerability Two",
+			Description:  "This is a dummy description for vulnerability two.",
+			Severity:     "Medium",
+			CVSSScore:    5.4,
+			CreatedOn:    time.Now().AddDate(0, -2, 0),
+			LastModified: time.Now(),
+			References:   []string{"http://example.com/vuln2"},
+		},
+		{
+			ID:           "VULN-003",
+			Name:         "Dummy Vulnerability Three",
+			Description:  "This is a dummy description for vulnerability three.",
+			Severity:     "Critical",
+			CVSSScore:    10.0,
+			CreatedOn:    time.Now().AddDate(0, -3, 0),
+			LastModified: time.Now(),
+			References:   []string{"http://example.com/vuln3", "http://example.com/vuln3-details"},
+		},
+	}
+
+	assetAVulnIDs := []string{assetAVulnerabilities[0].ID, assetAVulnerabilities[1].ID}
+	assetBVulnIDs := []string{assetBVulnerabilities[0].ID, assetBVulnerabilities[1].ID}
+
+	updateVulnStateParams := query.BatchUpdateVulnerabilityStateParams{
+		AccountID: rootAccount.AccountID,
+		VulnList:  []string{assetAVulnerabilities[0].ID, assetAVulnerabilities[1].ID, assetBVulnerabilities[1].ID},
+	}
+
+	assetAVulnJSON, _ := vuln.GetVulnerabilitiesJSON(assetAVulnerabilities)
+	assetBVulnJSON, _ := vuln.GetVulnerabilitiesJSON(assetBVulnerabilities)
+
+	handler.queries.InsertNewVulnerabilities(ctx, assetAVulnIDs)
+	handler.queries.InsertNewVulnerabilities(ctx, assetBVulnIDs)
+	handler.queries.BatchUpdateVulnerabilityData(ctx, assetAVulnJSON)
+	handler.queries.BatchUpdateVulnerabilityData(ctx, assetBVulnJSON)
+	handler.queries.BatchUpdateVulnerabilityState(ctx, updateVulnStateParams)
+
+	rows, _ := conn.Query(context.Background(), `
+	SELECT vulnerability_id
+	FROM vulnerability_data
+	`)
+	defer rows.Close()
+
+	for rows.Next() {
+		var vulnerabilityID string
+		rows.Scan(&vulnerabilityID)
+		t.Logf("VulnerabilityID: %s", vulnerabilityID)
+	}
+
+	scanUUID, err := handler.queries.CreateScanEntryRoot(ctx, scanParam)
+	assert.NoError(t, err)
+
+	updateA := query.BatchUpdateAVSParams{
+		AssetID:  assetA.AssetID,
+		ScanID:   scanUUID,
+		VulnList: assetAVulnIDs,
+	}
+
+	err = handler.queries.BatchUpdateAVS(ctx, updateA)
+	assert.NoError(t, err)
+
+	updateB := query.BatchUpdateAVSParams{
+		AssetID:  assetB.AssetID,
+		ScanID:   scanUUID,
+		VulnList: assetBVulnIDs,
+	}
+
+	err = handler.queries.BatchUpdateAVS(ctx, updateB)
+	assert.NoError(t, err)
+
+	vulnTable, err := handler.queries.RetrieveVulnTable(ctx, rootAccount.AccountID)
+	assert.NoError(t, err)
+
+	t.Logf(
+		"%-36s %-12s %-10s %-10s %-8s %-30s %-25s",
+		"VulnerabilityDataID", "VulnerabilityID", "State", "Severity", "CVSS", "AssetsAffected", "LastSeen",
+	)
+	for _, vulnRow := range vulnTable {
+		cvssScore, _ := vulnRow.CvssScore.Float64Value()
+		assetsAffected := strings.Join(vulnRow.AssetsAffected, ", ")
+
+		t.Logf(
+			"%-36x %-12s %-10s %-10s %-8.1f %-30s %-25s",
+			vulnRow.VulnerabilityDataID.Bytes,
+			vulnRow.VulnerabilityID,
+			vulnRow.VulnerabilityState,
+			vulnRow.VulnerabilitySeverity.String,
+			cvssScore.Float64,
+			assetsAffected,
+			vulnRow.LastSeen.Time.Format("Monday, 02 January 2006 03:04:05 PM MST"),
+		)
+	}
+	assert.Equal(t, []string{"dummy-hostB"}, vulnTable[0].AssetsAffected)
+	assert.Equal(t, []string{"dummy-hostA"}, vulnTable[1].AssetsAffected)
+	assert.Equal(t, []string{"dummy-hostA", "dummy-hostB"}, vulnTable[2].AssetsAffected)
+
 }
 
 func TestScan(t *testing.T) {

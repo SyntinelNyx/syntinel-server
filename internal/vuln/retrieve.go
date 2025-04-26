@@ -30,16 +30,16 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 
 	vulnList := []vulnResponse{}
 	for _, vuln := range vulns {
-		cvssScore, _ := vuln.CvssScore.Int.Float64()
-		cvssScore = cvssScore / 100
+		cvssScore, _ := vuln.CvssScore.Float64Value()
+
 		resp := vulnResponse{
 			VulnerabilityUUID: fmt.Sprintf("%x", vuln.VulnerabilityDataID.Bytes),
 			VulnerabilityID:   vuln.VulnerabilityID,
 			Status:            string(vuln.VulnerabilityState),
 			Severity:          vuln.VulnerabilitySeverity.String,
-			Cvss:              cvssScore,
+			Cvss:              cvssScore.Float64,
 			AssetsAffected:    vuln.AssetsAffected,
-			LastSeen:          vuln.StateChangedAt.Time.Format(time.RFC3339),
+			LastSeen:          vuln.LastSeen.Time.Format(time.RFC3339),
 		}
 
 		vulnList = append(vulnList, resp)

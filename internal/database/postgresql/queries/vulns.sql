@@ -1,12 +1,6 @@
 -- name: InsertNewVulnerabilities :exec
 INSERT INTO vulnerability_data(vulnerability_id)
-SELECT vulnerability_id
-FROM unnest(@vuln_list::text []) AS vulnerability_id
-WHERE NOT EXISTS (
-        SELECT 1
-        FROM vulnerability_data v
-        WHERE v.vulnerability_id = vulnerability_id
-    );
+SELECT unnest(@vuln_list::text []) ON CONFLICT (vulnerability_id) DO NOTHING;
 
 -- name: RetrieveUnchangedVulnerabilities :many
 SELECT vd.vulnerability_id
@@ -175,20 +169,19 @@ latest_state_history AS (
     WHERE rn = 1
 ),
 last_seen_table AS (
-    SELECT vuln_data_id,
-        state_changed_at
+    SELECT vulnerability_id,
+        scan_date AS last_seen
     FROM (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY vuln_data_id
-                    ORDER BY state_changed_at DESC
+                    PARTITION BY vulnerability_id
+                    ORDER BY scan_date DESC
                 ) AS rn
-            FROM vulnerability_state_history
+            FROM asset_vulnerability_scan
             WHERE root_account_id = (
                     SELECT id
                     FROM root_account
                 )
-                AND vulnerability_state != 'Resolved'
         ) latest
     WHERE rn = 1
 )
@@ -198,10 +191,10 @@ SELECT vd.vulnerability_data_id,
     vd.vulnerability_severity,
     vd.cvss_score,
     array_agg(DISTINCT si.hostname)::TEXT [] AS assets_affected,
-    lst.state_changed_at
-    FROM vulnerability_data vd
+    lst.last_seen
+FROM vulnerability_data vd
     JOIN latest_state_history lsh ON lsh.vuln_data_id = vd.vulnerability_data_id
-    JOIN last_seen_table lst ON lst.vuln_data_id = vd.vulnerability_data_id
+    JOIN last_seen_table lst ON lst.vulnerability_id = vd.vulnerability_data_id
     JOIN asset_vulnerability_scan avs ON avs.vulnerability_id = vd.vulnerability_data_id
     JOIN assets a ON a.asset_id = avs.asset_id
     JOIN system_information si ON si.id = a.sysinfo_id
@@ -210,4 +203,5 @@ GROUP BY vd.vulnerability_data_id,
     lsh.vulnerability_state,
     vd.vulnerability_severity,
     vd.cvss_score,
-    lst.state_changed_at;
+    lst.last_seen
+ORDER BY vd.cvss_score DESC;
