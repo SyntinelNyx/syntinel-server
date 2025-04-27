@@ -107,6 +107,32 @@ func (q *Queries) AddAsset(ctx context.Context, arg AddAssetParams) error {
 	return err
 }
 
+const getAllAssetIP = `-- name: GetAllAssetIP :many
+SELECT ip_address
+FROM assets
+WHERE root_account_id = $1
+`
+
+func (q *Queries) GetAllAssetIP(ctx context.Context, rootAccountID pgtype.UUID) ([]netip.Addr, error) {
+	rows, err := q.db.Query(ctx, getAllAssetIP, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []netip.Addr
+	for rows.Next() {
+		var ip_address netip.Addr
+		if err := rows.Scan(&ip_address); err != nil {
+			return nil, err
+		}
+		items = append(items, ip_address)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllAssets = `-- name: GetAllAssets :many
 SELECT a.asset_id,
   s.hostname,
@@ -145,6 +171,7 @@ func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]A
 	return items, nil
 }
 
+<<<<<<< HEAD
 const getFirstAssetIP = `-- name: GetFirstAssetIP :one
 SELECT ip_address
 FROM assets
@@ -152,6 +179,46 @@ ORDER BY registered_at
 LIMIT 1
 `
 
+=======
+const getAssets = `-- name: GetAssets :many
+SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
+WHERE root_account_id = $1
+`
+
+func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
+	rows, err := q.db.Query(ctx, getAssets, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Asset
+	for rows.Next() {
+		var i Asset
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.IpAddress,
+			&i.SysinfoID,
+			&i.RootAccountID,
+			&i.RegisteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFirstAssetIP = `-- name: GetFirstAssetIP :one
+SELECT ip_address
+FROM assets
+ORDER BY registered_at
+LIMIT 1
+`
+
+>>>>>>> ca61b309669a282be506692b2f060b86ac982d42
 func (q *Queries) GetFirstAssetIP(ctx context.Context) (netip.Addr, error) {
 	row := q.db.QueryRow(ctx, getFirstAssetIP)
 	var ip_address netip.Addr
