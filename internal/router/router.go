@@ -95,7 +95,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
-			subRouter.Post("/assets/{assetID}/create-snapshot", snapshotsHandler.CreateSnapshot)
+			subRouter.Post("/assets/create-snapshot/{assetID}", snapshotsHandler.CreateSnapshot)
 			subRouter.Get("/assets/snapshots/{assetID}", snapshotsHandler.ListSnapshots)
 
 			
