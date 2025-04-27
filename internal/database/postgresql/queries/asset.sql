@@ -58,6 +58,12 @@ SELECT ip_address
 FROM assets
 WHERE asset_id = $1 AND root_account_id = $2;
 
+-- name: GetFirstAssetIP :one
+SELECT ip_address
+FROM assets
+ORDER BY registered_at
+LIMIT 1;
+
 -- name: GetAllAssetIP :many
 SELECT ip_address
 FROM assets

@@ -47,7 +47,7 @@ func (h *Handler) RestoreSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uuidString := fmt.Sprintf("%s-%s-%s-%s-%s", SnapshotRestoreRequest.AssetID[0:8], SnapshotRestoreRequest.AssetID[8:12], SnapshotRestoreRequest.AssetID[12:16], SnapshotRestoreRequest.AssetID[16:20], SnapshotRestoreRequest.AssetID[20:])
-	if err := assetID.Set(uuidString); err != nil {
+	if err := assetID.Scan(uuidString); err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
 		return
 	}	

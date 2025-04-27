@@ -213,6 +213,20 @@ func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]A
 	return items, nil
 }
 
+const getFirstAssetIP = `-- name: GetFirstAssetIP :one
+SELECT ip_address
+FROM assets
+ORDER BY registered_at
+LIMIT 1
+`
+
+func (q *Queries) GetFirstAssetIP(ctx context.Context) (netip.Addr, error) {
+	row := q.db.QueryRow(ctx, getFirstAssetIP)
+	var ip_address netip.Addr
+	err := row.Scan(&ip_address)
+	return ip_address, err
+}
+
 const getIPByAssetID = `-- name: GetIPByAssetID :one
 SELECT ip_address
 FROM assets
