@@ -2,16 +2,8 @@
 SELECT role_name
 FROM roles
 WHERE is_deleted = FALSE;
-SELECT role_name
-FROM roles
-WHERE is_deleted = FALSE;
 
 -- name: GetRolePermissions :one
-SELECT p.*
-FROM roles r
-    JOIN roles_permissions rp ON r.role_id = rp.role_id
-    JOIN permissions p ON rp.permission_id = p.permission_id
-WHERE r.role_name = $1;
 SELECT p.*
 FROM roles r
     JOIN roles_permissions rp ON r.role_id = rp.role_id
@@ -22,9 +14,6 @@ WHERE r.role_name = $1;
 SELECT *
 FROM roles
 WHERE role_name = $1;
-SELECT *
-FROM roles
-WHERE role_name = $1;
 
 -- name: GetUserRoles :one
 SELECT role_name
@@ -32,18 +21,8 @@ FROM roles r
     JOIN iam_user_roles iur ON r.role_id = iur.role_id
     JOIN iam_accounts ia ON iur.iam_account_id = ia.account_id
 WHERE ia.username = $1;
-SELECT role_name
-FROM roles r
-    JOIN iam_user_roles iur ON r.role_id = iur.role_id
-    JOIN iam_accounts ia ON iur.iam_account_id = ia.account_id
-WHERE ia.username = $1;
 
 -- name: GetUserPermissions :one
-SELECT p.*
-FROM iam_user_permissions iup
-    JOIN permissions p ON iup.permission_id = p.permission_id
-    JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
-WHERE ia.account_id = $1;
 SELECT p.*
 FROM iam_user_permissions iup
     JOIN permissions p ON iup.permission_id = p.permission_id
@@ -64,7 +43,6 @@ WITH updated_permission AS (
     WHERE permission_id = (
             SELECT permission_id
             FROM iam_user_permissions iup
-                JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
                 JOIN iam_accounts ia ON iup.iam_account_id = ia.account_id
             WHERE ia.username = $1
         )
@@ -91,7 +69,6 @@ WITH updated_permission AS (
             SELECT rp.permission_id
             FROM roles_permissions rp
                 JOIN roles r ON rp.role_id = r.role_id
-                JOIN roles r ON rp.role_id = r.role_id
             WHERE r.role_name = $1
             LIMIT 1
         )
@@ -102,7 +79,7 @@ SET permission_id = updated_permission.permission_id
 FROM updated_permission
 WHERE rp.permission_id != updated_permission.permission_id
     AND rp.role_id = (
-        SELECT r.crole_id
+        SELECT r.role_id
         FROM roles r
         WHERE r.role_name = $1
         LIMIT 1
@@ -129,10 +106,6 @@ inserted_permission AS (
     RETURNING permission_id
 )
 INSERT INTO roles_permissions (role_id, permission_id)
-SELECT inserted_role.role_id,
-    inserted_permission.permission_id
-FROM inserted_role,
-    inserted_permission;
 SELECT inserted_role.role_id,
     inserted_permission.permission_id
 FROM inserted_role,

@@ -201,12 +201,7 @@ SELECT create_hypertable(
     if_not_exists => TRUE,
     migrate_data => TRUE
   );
-SELECT create_hypertable(
-    'vulnerability_state_history',
-    by_range('state_changed_at'),
-    if_not_exists => TRUE,
-    migrate_data => TRUE
-  );
+
 
 CREATE TABLE IF NOT EXISTS scans (
   scan_id UUID DEFAULT uuid_generate_v4(),
