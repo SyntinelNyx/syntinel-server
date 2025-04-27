@@ -145,21 +145,31 @@ JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1
 `
 
-func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
-	rows, err := q.db.Query(ctx, getAssets, rootAccountID)
+type GetAllAssetsRow struct {
+	AssetID         pgtype.UUID
+	Hostname        pgtype.Text
+	Os              pgtype.Text
+	PlatformVersion pgtype.Text
+	IpAddress       netip.Addr
+	CreatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) GetAllAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]GetAllAssetsRow, error) {
+	rows, err := q.db.Query(ctx, getAllAssets, rootAccountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Asset
+	var items []GetAllAssetsRow
 	for rows.Next() {
-		var i Asset
+		var i GetAllAssetsRow
 		if err := rows.Scan(
 			&i.AssetID,
+			&i.Hostname,
+			&i.Os,
+			&i.PlatformVersion,
 			&i.IpAddress,
-			&i.SysinfoID,
-			&i.RootAccountID,
-			&i.RegisteredAt,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -171,15 +181,6 @@ func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]A
 	return items, nil
 }
 
-<<<<<<< HEAD
-const getFirstAssetIP = `-- name: GetFirstAssetIP :one
-SELECT ip_address
-FROM assets
-ORDER BY registered_at
-LIMIT 1
-`
-
-=======
 const getAssets = `-- name: GetAssets :many
 SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
 WHERE root_account_id = $1
@@ -218,7 +219,6 @@ ORDER BY registered_at
 LIMIT 1
 `
 
->>>>>>> ca61b309669a282be506692b2f060b86ac982d42
 func (q *Queries) GetFirstAssetIP(ctx context.Context) (netip.Addr, error) {
 	row := q.db.QueryRow(ctx, getFirstAssetIP)
 	var ip_address netip.Addr

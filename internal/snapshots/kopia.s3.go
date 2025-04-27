@@ -48,7 +48,7 @@ func (h *Handler) CreateKopiaS3Repository() {
 	logger.Info("Repository created successfully")
 }
 
-func ConnectKopiaS3Repository(agentip string) (string, error) {
+func ConnectKopiaS3Repository(agentip string) (error) {
 	bucket := os.Getenv("S3_BUCKET")
 	endpoint := os.Getenv("S3_ENDPOINT")
 	accessKey := os.Getenv("S3_ACCESS_KEY")
@@ -62,16 +62,9 @@ func ConnectKopiaS3Repository(agentip string) (string, error) {
 		},
 	}
 
-	logger.Info("bucket: %s", bucket)
-	logger.Info("endpoint: %s", endpoint)
-	logger.Info("accessKey: %s", accessKey)
-	logger.Info("secretKey: %s", secretKey)
-	logger.Info("repoPwd: %s", repoPwd)
-	logger.Info("agentip: %s", agentip)
-
 	responses, err := commands.Command(agentip, controlMessages)
 	if err != nil {
-		return "", fmt.Errorf("Error connecting to Kopia S3 repository: %v", err)
+		return fmt.Errorf("Error connecting to Kopia S3 repository: %v", err)
 	}
 	// Process the responses
 	for i, response := range responses {
@@ -80,7 +73,7 @@ func ConnectKopiaS3Repository(agentip string) (string, error) {
 		logger.Info("  Result: %s\n", response.GetResult())
 		logger.Info("  Status: %s\n", response.GetStatus())
 	}
-	return "Repository connected successfully", nil
+	return nil
 }
 
 // func CreateSnapshot(agentip, path string) (string, error) {
