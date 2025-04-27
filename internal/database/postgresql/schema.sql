@@ -241,13 +241,8 @@ SELECT create_hypertable(
     migrate_data => TRUE
   );
 
-
-CREATE TABLE IF NOT EXISTS telemetry_subjects (
-  telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-);
-
 CREATE TABLE IF NOT EXISTS telemetry (
-  telemetry_id UUID NOT NULL,
+  telemetry_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   scan_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   cpu_usage FLOAT NOT NULL,
   mem_total BIGINT NOT NULL,
@@ -262,12 +257,6 @@ CREATE TABLE IF NOT EXISTS telemetry (
   FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
 );
 
-SELECT create_hypertable(
-    'telemetry',
-    by_range('scan_time'),
-    if_not_exists => TRUE,
-    migrate_data => TRUE
-  );
 SELECT create_hypertable(
     'telemetry',
     by_range('scan_time'),

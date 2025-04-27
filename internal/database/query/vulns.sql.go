@@ -289,36 +289,30 @@ WITH root_account AS (
 latest_state_history AS (
     SELECT vuln_data_id,
         vulnerability_state
-    FROM (
-            SELECT history_id, vuln_data_id, vulnerability_state, state_changed_at, root_account_id,
-                ROW_NUMBER() OVER (
-                    PARTITION BY vuln_data_id
-                    ORDER BY state_changed_at DESC
-                ) AS rn
+    FROM vulnerability_state_history
+    WHERE root_account_id = (
+            SELECT id
+            FROM root_account
+        )
+        AND state_changed_at = (
+            SELECT MAX(state_changed_at)
             FROM vulnerability_state_history
-            WHERE root_account_id = (
-                    SELECT id
-                    FROM root_account
-                )
-        ) latest
-    WHERE rn = 1
+            WHERE vuln_data_id = vulnerability_state_history.vuln_data_id
+        )
 ),
 last_seen_table AS (
     SELECT vulnerability_id,
         scan_date AS last_seen
-    FROM (
-            SELECT scan_result_id, root_account_id, scan_id, asset_id, vulnerability_id, scan_date,
-                ROW_NUMBER() OVER (
-                    PARTITION BY vulnerability_id
-                    ORDER BY scan_date DESC
-                ) AS rn
+    FROM asset_vulnerability_scan avs
+    WHERE root_account_id = (
+            SELECT id
+            FROM root_account
+        )
+        AND scan_date = (
+            SELECT MAX(scan_date)
             FROM asset_vulnerability_scan
-            WHERE root_account_id = (
-                    SELECT id
-                    FROM root_account
-                )
-        ) latest
-    WHERE rn = 1
+            WHERE vulnerability_id = avs.vulnerability_id
+        )
 )
 SELECT vd.vulnerability_data_id,
     vd.vulnerability_id,
