@@ -62,6 +62,13 @@ func ConnectKopiaS3Repository(agentip string) (string, error) {
 		},
 	}
 
+	logger.Info("bucket: %s", bucket)
+	logger.Info("endpoint: %s", endpoint)
+	logger.Info("accessKey: %s", accessKey)
+	logger.Info("secretKey: %s", secretKey)
+	logger.Info("repoPwd: %s", repoPwd)
+	logger.Info("agentip: %s", agentip)
+
 	responses, err := commands.Command(agentip, controlMessages)
 	if err != nil {
 		return "", fmt.Errorf("Error connecting to Kopia S3 repository: %v", err)

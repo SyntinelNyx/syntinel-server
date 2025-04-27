@@ -16,7 +16,6 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
-	// "github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 func main() {
@@ -54,8 +53,6 @@ func main() {
 	// 	}
 	// 	logger.Info("Scan result: %v", resp)
 	// }()
-
-	// snapshots.ConnectKopiaS3Repository()
 
 	certPath := filepath.Join(os.Getenv("DATA_PATH"), "server_cert.pem")
 	keyPath := filepath.Join(os.Getenv("DATA_PATH"), "server_key.pem")
