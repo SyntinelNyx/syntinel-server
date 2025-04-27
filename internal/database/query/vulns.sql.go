@@ -379,7 +379,15 @@ GROUP BY vd.vulnerability_data_id,
     vd.vulnerability_severity,
     vd.cvss_score,
     lst.last_seen
-ORDER BY vd.cvss_score DESC
+ORDER BY CASE
+        WHEN vd.vulnerability_severity = 'Critical' THEN 4
+        WHEN vd.vulnerability_severity = 'High' THEN 3
+        WHEN vd.vulnerability_severity = 'Medium' THEN 2
+        WHEN vd.vulnerability_severity = 'Low' THEN 1
+        WHEN vd.vulnerability_severity = 'Unknown' THEN 0
+        ELSE -1
+    END DESC,
+    vd.cvss_score DESC
 `
 
 type RetrieveVulnTableRow struct {
