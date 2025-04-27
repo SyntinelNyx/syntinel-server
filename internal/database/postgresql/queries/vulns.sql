@@ -178,27 +178,42 @@ last_seen_table AS (
             FROM asset_vulnerability_scan
             WHERE vulnerability_id = avs.vulnerability_id
         )
+),
+asset_pairs AS (
+    SELECT DISTINCT si.hostname,
+        a.asset_id
+    FROM asset_vulnerability_scan avs
+        JOIN assets a ON a.asset_id = avs.asset_id
+        JOIN system_information si ON si.id = a.sysinfo_id
+    WHERE a.root_account_id = (
+            SELECT id
+            FROM root_account
+        )
 )
 SELECT vd.vulnerability_data_id,
     vd.vulnerability_id,
     lsh.vulnerability_state,
     vd.vulnerability_severity,
     vd.cvss_score,
-    array_agg(DISTINCT si.hostname)::TEXT [] AS assets_affected,
-    a.asset_id,
+    array_agg(
+        ap.hostname
+        ORDER BY ap.hostname
+    )::TEXT [] AS assets_affected,
+    array_agg(
+        ap.asset_id
+        ORDER BY ap.hostname
+    )::UUID [] AS asset_uuids,
     lst.last_seen
 FROM vulnerability_data vd
     JOIN latest_state_history lsh ON lsh.vuln_data_id = vd.vulnerability_data_id
     JOIN last_seen_table lst ON lst.vulnerability_id = vd.vulnerability_data_id
     JOIN asset_vulnerability_scan avs ON avs.vulnerability_id = vd.vulnerability_data_id
-    JOIN assets a ON a.asset_id = avs.asset_id
-    JOIN system_information si ON si.id = a.sysinfo_id
+    JOIN asset_pairs ap ON ap.asset_id = avs.asset_id
 GROUP BY vd.vulnerability_data_id,
     vd.vulnerability_id,
     lsh.vulnerability_state,
     vd.vulnerability_severity,
     vd.cvss_score,
-    a.asset_id,
     lst.last_seen
 ORDER BY vd.cvss_score DESC;
 
