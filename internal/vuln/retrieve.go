@@ -15,6 +15,7 @@ type vulnResponse struct {
 	Status            string   `json:"status"`
 	Severity          string   `json:"severity"`
 	AssetsAffected    []string `json:"assetsAffected"`
+	AssetUUID         string   `json:"assetsUUID"`
 	LastSeen          string   `json:"lastSeen"`
 }
 
@@ -35,6 +36,7 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 			Status:            string(vuln.VulnerabilityState),
 			Severity:          vuln.VulnerabilitySeverity.String,
 			AssetsAffected:    vuln.AssetsAffected,
+			AssetUUID:         fmt.Sprintf("%x-%x-%x-%x-%x", vuln.VulnerabilityDataID.Bytes[0:4], vuln.VulnerabilityDataID.Bytes[4:6], vuln.VulnerabilityDataID.Bytes[6:8], vuln.VulnerabilityDataID.Bytes[8:10], vuln.VulnerabilityDataID.Bytes[10:16]),
 			LastSeen:          vuln.LastSeen.Time.Format(time.RFC3339),
 		}
 

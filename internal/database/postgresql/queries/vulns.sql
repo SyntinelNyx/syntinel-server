@@ -185,6 +185,7 @@ SELECT vd.vulnerability_data_id,
     vd.vulnerability_severity,
     vd.cvss_score,
     array_agg(DISTINCT si.hostname)::TEXT [] AS assets_affected,
+    a.asset_id,
     lst.last_seen
 FROM vulnerability_data vd
     JOIN latest_state_history lsh ON lsh.vuln_data_id = vd.vulnerability_data_id
@@ -197,6 +198,7 @@ GROUP BY vd.vulnerability_data_id,
     lsh.vulnerability_state,
     vd.vulnerability_severity,
     vd.cvss_score,
+    a.asset_id,
     lst.last_seen
 ORDER BY vd.cvss_score DESC;
 
