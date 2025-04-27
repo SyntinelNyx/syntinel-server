@@ -29,10 +29,11 @@ type TrivyOutput struct {
 			Severity        string   `json:"Severity"`
 			References      []string `json:"References"`
 			CVSS            map[string]struct {
-				Score float64 `json:"V3Score"`
+				V3Score float64 `json:"V3Score"`
 			} `json:"CVSS"`
-			PublishedDate    string `json:"PublishedDate"`
-			LastModifiedDate string `json:"LastModifiedDate"`
+			VendorSeverity   map[string]int `json:"VendorSeverity"`
+			PublishedDate    string         `json:"PublishedDate"`
+			LastModifiedDate string         `json:"LastModifiedDate"`
 		} `json:"Vulnerabilities"`
 	} `json:"Results"`
 }
@@ -54,14 +55,6 @@ func (t *TrivyScanner) DefaultFlags() interface{} {
 		Severity:      "CRITICAL,HIGH",
 		IgnoreUnfixed: false,
 	}
-}
-
-func GetCVSSScore(cvssMap map[string]struct{ Score float64 }) float64 {
-	// Note: Returns first score found (or 0.0 if not found)
-	for _, cvss := range cvssMap {
-		return cvss.Score
-	}
-	return 0.0
 }
 
 func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, error) {
@@ -88,7 +81,37 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 
 			seenCVE[vulnData.VulnerabilityID] = struct{}{}
 
-			cvssScore := GetCVSSScore(map[string]struct{ Score float64 }(vulnData.CVSS))
+			var vendor string
+			for vendorKey := range vulnData.CVSS {
+				vendor = vendorKey
+				break
+			}
+
+			vendorSeverity, exists := vulnData.VendorSeverity[vendor]
+			if !exists {
+				vendorSeverity = 0
+			}
+
+			var severity string
+			switch vendorSeverity {
+			case 1:
+				severity = "Low"
+			case 2:
+				severity = "Medium"
+			case 3:
+				severity = "High"
+			case 4:
+				severity = "Critical"
+			default:
+				severity = "Unknown"
+			}
+
+			var cvssScore float64
+			if vendorData, exists := vulnData.CVSS[vendor]; exists {
+				cvssScore = vendorData.V3Score
+			} else {
+				cvssScore = 0
+			}
 
 			layout := "2006-01-02T15:04:05.999999Z"
 			createdOn, _ := time.Parse(layout, vulnData.PublishedDate)
@@ -98,7 +121,7 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 				ID:           vulnData.VulnerabilityID,
 				Name:         vulnData.Title,
 				Description:  vulnData.Description,
-				Severity:     vulnData.Severity,
+				Severity:     severity,
 				CVSSScore:    cvssScore,
 				CreatedOn:    createdOn,
 				LastModified: lastModified,
