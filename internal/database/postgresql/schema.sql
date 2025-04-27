@@ -237,7 +237,7 @@ SELECT create_hypertable(
   );
 
 CREATE TABLE IF NOT EXISTS telemetry (
-  telemetry_id UUID NOT NULL DEFAULT uuid_generate_v4(),
+  telemetry_id UUID NOT NULL,
   scan_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   cpu_usage FLOAT NOT NULL,
   mem_total BIGINT NOT NULL,
@@ -248,8 +248,7 @@ CREATE TABLE IF NOT EXISTS telemetry (
   disk_free BIGINT NOT NULL,
   disk_used BIGINT NOT NULL,
   disk_used_percent FLOAT NOT NULL,
-  PRIMARY KEY (scan_time, telemetry_id),
-  FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
+  PRIMARY KEY (telemetry_time, telemetry_id)
 );
 
 SELECT create_hypertable(
@@ -264,6 +263,7 @@ CREATE TABLE IF NOT EXISTS telemetry_asset (
   asset_id UUID NOT NULL,
   root_account_id UUID NOT NULL,
   PRIMARY KEY (telemetry_id, asset_id),
-  FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects (telemetry_id),
+    FOREIGN KEY (telemetry_id) REFERENCES telemetry (telemetry_id),
+  FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );

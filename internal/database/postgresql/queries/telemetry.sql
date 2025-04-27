@@ -1,9 +1,40 @@
+-- name: InsertTelemetryData :many
+WITH inserted_telemetry AS (
+    INSERT INTO telemetry (
+        telemetry_id,
+        telemetry_time,
+        cpu_usage,
+        mem_total,
+        mem_available,
+        mem_used,
+        mem_used_percent,
+        disk_total,
+        disk_free,
+        disk_used,
+        disk_used_percent
+    ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    )
+    RETURNING telemetry_id, telemetry_time
+)
+INSERT INTO telemetry_asset (
+    telemetry_id,
+    asset_id,
+    root_account_id
+) VALUES (
+    (SELECT telemetry_id FROM inserted_telemetry),
+    $12,
+    $13
+)
+RETURNING (SELECT telemetry_id FROM inserted_telemetry);
+
+
 -- name: GetLatestTelemetryALL :many
 SELECT 
     a.asset_id,
     a.ip_address,
     si.hostname,
-    t.scan_time,
+    t.telemetry_time,
     t.cpu_usage,
     t.mem_used_percent,
     t.disk_used_percent
@@ -21,7 +52,7 @@ ORDER BY a.ip_address;
 
 -- name: GetTelemetryByTime :one
 SELECT 
-    time_bucket('1 hour', t.scan_time) AS hour,
+    time_bucket($1 , t.scan_time) AS hour,
     ta.asset_id,
     a.ip_address,
     AVG(t.cpu_usage) AS avg_cpu,
@@ -31,6 +62,6 @@ FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
 JOIN root_accounts ra ON ta.root_account_id = ra.account_id
-WHERE t.scan_time > NOW() - INTERVAL '24 hours'
+WHERE t.scan_time > NOW() - INTERVAL $2
 GROUP BY hour, ta.asset_id, a.ip_address
 ORDER BY hour DESC, ta.asset_id;

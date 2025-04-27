@@ -17,7 +17,7 @@ SELECT
     a.asset_id,
     a.ip_address,
     si.hostname,
-    t.scan_time,
+    t.telemetry_time,
     t.cpu_usage,
     t.mem_used_percent,
     t.disk_used_percent
@@ -38,7 +38,7 @@ type GetLatestTelemetryALLRow struct {
 	AssetID         pgtype.UUID
 	IpAddress       netip.Addr
 	Hostname        pgtype.Text
-	ScanTime        pgtype.Timestamptz
+	TelemetryTime   pgtype.Timestamptz
 	CpuUsage        float64
 	MemUsedPercent  float64
 	DiskUsedPercent float64
@@ -57,7 +57,7 @@ func (q *Queries) GetLatestTelemetryALL(ctx context.Context) ([]GetLatestTelemet
 			&i.AssetID,
 			&i.IpAddress,
 			&i.Hostname,
-			&i.ScanTime,
+			&i.TelemetryTime,
 			&i.CpuUsage,
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
@@ -74,7 +74,7 @@ func (q *Queries) GetLatestTelemetryALL(ctx context.Context) ([]GetLatestTelemet
 
 const getTelemetryByTime = `-- name: GetTelemetryByTime :one
 SELECT 
-    time_bucket('1 hour', t.scan_time) AS hour,
+    time_bucket($1 , t.scan_time) AS hour,
     ta.asset_id,
     a.ip_address,
     AVG(t.cpu_usage) AS avg_cpu,
@@ -84,10 +84,15 @@ FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
 JOIN root_accounts ra ON ta.root_account_id = ra.account_id
-WHERE t.scan_time > NOW() - INTERVAL '24 hours'
+WHERE t.scan_time > NOW() - INTERVAL $2
 GROUP BY hour, ta.asset_id, a.ip_address
 ORDER BY hour DESC, ta.asset_id
 `
+
+type GetTelemetryByTimeParams struct {
+	TimeBucket interface{}
+	Column2    pgtype.Interval
+}
 
 type GetTelemetryByTimeRow struct {
 	Hour      interface{}
@@ -98,8 +103,8 @@ type GetTelemetryByTimeRow struct {
 	AvgDisk   float64
 }
 
-func (q *Queries) GetTelemetryByTime(ctx context.Context) (GetTelemetryByTimeRow, error) {
-	row := q.db.QueryRow(ctx, getTelemetryByTime)
+func (q *Queries) GetTelemetryByTime(ctx context.Context, arg GetTelemetryByTimeParams) (GetTelemetryByTimeRow, error) {
+	row := q.db.QueryRow(ctx, getTelemetryByTime, arg.TimeBucket, arg.Column2)
 	var i GetTelemetryByTimeRow
 	err := row.Scan(
 		&i.Hour,
@@ -110,4 +115,85 @@ func (q *Queries) GetTelemetryByTime(ctx context.Context) (GetTelemetryByTimeRow
 		&i.AvgDisk,
 	)
 	return i, err
+}
+
+const insertTelemetryData = `-- name: InsertTelemetryData :many
+WITH inserted_telemetry AS (
+    INSERT INTO telemetry (
+        telemetry_id,
+        telemetry_time,
+        cpu_usage,
+        mem_total,
+        mem_available,
+        mem_used,
+        mem_used_percent,
+        disk_total,
+        disk_free,
+        disk_used,
+        disk_used_percent
+    ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    )
+    RETURNING telemetry_id, telemetry_time
+)
+INSERT INTO telemetry_asset (
+    telemetry_id,
+    asset_id,
+    root_account_id
+) VALUES (
+    (SELECT telemetry_id FROM inserted_telemetry),
+    $12,
+    $13
+)
+RETURNING (SELECT telemetry_id FROM inserted_telemetry)
+`
+
+type InsertTelemetryDataParams struct {
+	TelemetryID     pgtype.UUID
+	TelemetryTime   pgtype.Timestamptz
+	CpuUsage        float64
+	MemTotal        int64
+	MemAvailable    int64
+	MemUsed         int64
+	MemUsedPercent  float64
+	DiskTotal       int64
+	DiskFree        int64
+	DiskUsed        int64
+	DiskUsedPercent float64
+	AssetID         pgtype.UUID
+	RootAccountID   pgtype.UUID
+}
+
+func (q *Queries) InsertTelemetryData(ctx context.Context, arg InsertTelemetryDataParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, insertTelemetryData,
+		arg.TelemetryID,
+		arg.TelemetryTime,
+		arg.CpuUsage,
+		arg.MemTotal,
+		arg.MemAvailable,
+		arg.MemUsed,
+		arg.MemUsedPercent,
+		arg.DiskTotal,
+		arg.DiskFree,
+		arg.DiskUsed,
+		arg.DiskUsedPercent,
+		arg.AssetID,
+		arg.RootAccountID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var telemetry_id pgtype.UUID
+		if err := rows.Scan(&telemetry_id); err != nil {
+			return nil, err
+		}
+		items = append(items, telemetry_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
