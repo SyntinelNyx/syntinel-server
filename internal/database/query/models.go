@@ -213,10 +213,6 @@ type TelemetryAsset struct {
 	RootAccountID pgtype.UUID
 }
 
-type TelemetrySubject struct {
-	TelemetryID pgtype.UUID
-}
-
 type VulnerabilityDatum struct {
 	VulnerabilityDataID      pgtype.UUID
 	VulnerabilityID          string

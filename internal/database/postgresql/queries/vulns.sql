@@ -199,3 +199,13 @@ GROUP BY vd.vulnerability_data_id,
     vd.cvss_score,
     lst.last_seen
 ORDER BY vd.cvss_score DESC;
+
+-- name: RetrieveVulnData :one
+SELECT vulnerability_name,
+    vulnerability_description,
+    cvss_score,
+    reference,
+    created_on,
+    last_modified
+FROM vulnerability_data
+WHERE vulnerability_id = $1;

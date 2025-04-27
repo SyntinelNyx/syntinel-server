@@ -275,6 +275,40 @@ func (q *Queries) RetrieveUnchangedVulnerabilities(ctx context.Context, arg Retr
 	return items, nil
 }
 
+const retrieveVulnData = `-- name: RetrieveVulnData :one
+SELECT vulnerability_name,
+    vulnerability_description,
+    cvss_score,
+    reference,
+    created_on,
+    last_modified
+FROM vulnerability_data
+WHERE vulnerability_id = $1
+`
+
+type RetrieveVulnDataRow struct {
+	VulnerabilityName        pgtype.Text
+	VulnerabilityDescription pgtype.Text
+	CvssScore                pgtype.Numeric
+	Reference                []string
+	CreatedOn                pgtype.Timestamptz
+	LastModified             pgtype.Timestamptz
+}
+
+func (q *Queries) RetrieveVulnData(ctx context.Context, vulnerabilityID string) (RetrieveVulnDataRow, error) {
+	row := q.db.QueryRow(ctx, retrieveVulnData, vulnerabilityID)
+	var i RetrieveVulnDataRow
+	err := row.Scan(
+		&i.VulnerabilityName,
+		&i.VulnerabilityDescription,
+		&i.CvssScore,
+		&i.Reference,
+		&i.CreatedOn,
+		&i.LastModified,
+	)
+	return i, err
+}
+
 const retrieveVulnTable = `-- name: RetrieveVulnTable :many
 WITH root_account AS (
     SELECT COALESCE(
