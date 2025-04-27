@@ -42,8 +42,7 @@ INSERT INTO assets (
 );
 
 -- name: GetAllAssets :many
-SELECT
-  a.asset_id,
+SELECT a.asset_id,
   s.hostname,
   s.os,
   s.platform_version,

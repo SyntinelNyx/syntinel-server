@@ -17,6 +17,8 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 )
 
 type Router struct {
@@ -83,6 +85,8 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
+			scanHandler := scan.NewHandler(r.queries)
+			vulnHandler := vuln.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
@@ -93,6 +97,10 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
+			subRouter.Post("/scan/launch", scanHandler.Launch)
+			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
+			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
+			subRouter.Post("/vuln/retrieve-data", vulnHandler.RetrieveData)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {

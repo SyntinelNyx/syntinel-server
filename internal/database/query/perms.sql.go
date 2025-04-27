@@ -235,7 +235,7 @@ SET permission_id = updated_permission.permission_id
 FROM updated_permission
 WHERE rp.permission_id != updated_permission.permission_id
     AND rp.role_id = (
-        SELECT r.crole_id
+        SELECT r.role_id
         FROM roles r
         WHERE r.role_name = $1
         LIMIT 1

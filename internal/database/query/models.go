@@ -71,7 +71,7 @@ type Asset struct {
 	RegisteredAt  pgtype.Timestamptz
 }
 
-type AssetVulnerabilityState struct {
+type AssetVulnerabilityScan struct {
 	ScanResultID    pgtype.UUID
 	RootAccountID   pgtype.UUID
 	ScanID          pgtype.UUID
@@ -163,6 +163,7 @@ type RootAccount struct {
 type Scan struct {
 	ScanID        pgtype.UUID
 	RootAccountID pgtype.UUID
+	ScannedByUser pgtype.UUID
 	ScannerName   string
 	ScanDate      pgtype.Timestamptz
 }
@@ -212,16 +213,13 @@ type TelemetryAsset struct {
 	RootAccountID pgtype.UUID
 }
 
-type TelemetrySubject struct {
-	TelemetryID pgtype.UUID
-}
-
 type VulnerabilityDatum struct {
 	VulnerabilityDataID      pgtype.UUID
 	VulnerabilityID          string
 	VulnerabilityName        pgtype.Text
 	VulnerabilityDescription pgtype.Text
 	VulnerabilitySeverity    pgtype.Text
+	Reference                []string
 	CvssScore                pgtype.Numeric
 	CreatedOn                pgtype.Timestamptz
 	LastModified             pgtype.Timestamptz

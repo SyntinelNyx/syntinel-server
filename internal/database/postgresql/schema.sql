@@ -96,22 +96,29 @@ CREATE TABLE IF NOT EXISTS environment_assets (
 CREATE TABLE IF NOT EXISTS permission_templates (
   template_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   component_name VARCHAR(50) UNIQUE,
-  capabilities TEXT[]
+  capabilities TEXT []
 );
 INSERT INTO permission_templates (component_name, capabilities)
-VALUES
-  ('Overview', ARRAY['View']),
-  ('Assets', ARRAY['View', 'Create', 'Manage']),
-  ('Vulnerabilities', ARRAY['View', 'Manage']),
-  ('Environments', ARRAY['View', 'Create', 'Manage']),
-  ('Actions', ARRAY['View', 'Create', 'Manage']),
-  ('Snapshots', ARRAY['View', 'Create', 'Manage']),
-  ('Scans', ARRAY['View', 'Create', 'Manage']),
-  ('UserManagement', ARRAY['View', 'Create', 'Manage']),
-  ('RoleManagement', ARRAY['View', 'Create', 'Manage']),
-  ('ApplicationConfig', ARRAY['View', 'Manage']),
-  ('Logs', ARRAY['View'])
-ON CONFLICT (component_name) DO NOTHING;
+VALUES ('Overview', ARRAY ['View']),
+  ('Assets', ARRAY ['View', 'Create', 'Manage']),
+  ('Vulnerabilities', ARRAY ['View', 'Manage']),
+  (
+    'Environments',
+    ARRAY ['View', 'Create', 'Manage']
+  ),
+  ('Actions', ARRAY ['View', 'Create', 'Manage']),
+  ('Snapshots', ARRAY ['View', 'Create', 'Manage']),
+  ('Scans', ARRAY ['View', 'Create', 'Manage']),
+  (
+    'UserManagement',
+    ARRAY ['View', 'Create', 'Manage']
+  ),
+  (
+    'RoleManagement',
+    ARRAY ['View', 'Create', 'Manage']
+  ),
+  ('ApplicationConfig', ARRAY ['View', 'Manage']),
+  ('Logs', ARRAY ['View']) ON CONFLICT (component_name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS permissions_new (
   permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -120,8 +127,7 @@ CREATE TABLE IF NOT EXISTS permissions_new (
 INSERT INTO permissions_new (permission_name)
 SELECT pt.component_name || '.' || cap_name AS permission_name
 FROM permission_templates pt
-CROSS JOIN unnest(pt.capabilities) AS cap_name
-ON CONFLICT (permission_name) DO NOTHING;
+  CROSS JOIN unnest(pt.capabilities) AS cap_name ON CONFLICT (permission_name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS permissions (
   permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -171,6 +177,7 @@ CREATE TABLE IF NOT EXISTS vulnerability_data (
   vulnerability_name VARCHAR(255),
   vulnerability_description TEXT,
   vulnerability_severity VARCHAR(50),
+  reference TEXT [],
   cvss_score DECIMAL(4, 2),
   created_on TIMESTAMPTZ,
   last_modified TIMESTAMPTZ
@@ -179,7 +186,7 @@ CREATE TABLE IF NOT EXISTS vulnerability_data (
 CREATE TABLE IF NOT EXISTS vulnerability_state_history (
   history_id UUID DEFAULT uuid_generate_v4(),
   vuln_data_id UUID NOT NULL,
-  vulnerability_state VULNSTATE NOT NULL DEFAULT 'New',
+  vulnerability_state VULNSTATE NOT NULL,
   state_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   root_account_id UUID NOT NULL,
   PRIMARY KEY (history_id, state_changed_at),
@@ -188,11 +195,18 @@ CREATE TABLE IF NOT EXISTS vulnerability_state_history (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('vulnerability_state_history', by_range('state_changed_at'), if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable(
+    'vulnerability_state_history',
+    by_range('state_changed_at'),
+    if_not_exists => TRUE,
+    migrate_data => TRUE
+  );
+
 
 CREATE TABLE IF NOT EXISTS scans (
   scan_id UUID DEFAULT uuid_generate_v4(),
   root_account_id UUID NOT NULL,
+  scanned_by_user UUID,
   scanner_name VARCHAR(255) NOT NULL,
   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (scan_id),
@@ -200,7 +214,7 @@ CREATE TABLE IF NOT EXISTS scans (
 );
 
 
-CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
+CREATE TABLE IF NOT EXISTS asset_vulnerability_scan (
   scan_result_id UUID DEFAULT uuid_generate_v4(),
   root_account_id UUID NOT NULL,
   scan_id UUID NOT NULL,
@@ -215,15 +229,15 @@ CREATE TABLE IF NOT EXISTS asset_vulnerability_state (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('asset_vulnerability_state', by_range('scan_date'), if_not_exists => TRUE, migrate_data => TRUE);
-
-
-CREATE TABLE IF NOT EXISTS telemetry_subjects (
-  telemetry_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-);
+SELECT create_hypertable(
+    'asset_vulnerability_scan',
+    by_range('scan_date'),
+    if_not_exists => TRUE,
+    migrate_data => TRUE
+  );
 
 CREATE TABLE IF NOT EXISTS telemetry (
-  telemetry_id UUID NOT NULL,
+  telemetry_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   scan_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   cpu_usage FLOAT NOT NULL,
   mem_total BIGINT NOT NULL,
@@ -238,7 +252,12 @@ CREATE TABLE IF NOT EXISTS telemetry (
   FOREIGN KEY (telemetry_id) REFERENCES telemetry_subjects(telemetry_id)
 );
 
-SELECT create_hypertable('telemetry', by_range('scan_time'), if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable(
+    'telemetry',
+    by_range('scan_time'),
+    if_not_exists => TRUE,
+    migrate_data => TRUE
+  );
 
 CREATE TABLE IF NOT EXISTS telemetry_asset (
   telemetry_id UUID NOT NULL,
