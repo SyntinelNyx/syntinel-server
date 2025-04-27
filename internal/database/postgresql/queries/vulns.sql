@@ -189,20 +189,15 @@ asset_pairs AS (
             SELECT id
             FROM root_account
         )
+    ORDER BY si.hostname
 )
 SELECT vd.vulnerability_data_id,
     vd.vulnerability_id,
     lsh.vulnerability_state,
     vd.vulnerability_severity,
     vd.cvss_score,
-    array_agg(
-        ap.hostname
-        ORDER BY ap.hostname
-    )::TEXT [] AS assets_affected,
-    array_agg(
-        ap.asset_id
-        ORDER BY ap.hostname
-    )::UUID [] AS asset_uuids,
+    array_agg(DISTINCT ap.hostname)::TEXT [] AS assets_affected,
+    array_agg(DISTINCT ap.asset_id)::UUID [] AS asset_uuids,
     lst.last_seen
 FROM vulnerability_data vd
     JOIN latest_state_history lsh ON lsh.vuln_data_id = vd.vulnerability_data_id
