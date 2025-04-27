@@ -2,7 +2,6 @@ package scan
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 
@@ -19,7 +18,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 	scanner, err := strategies.GetScanner(scannerName)
 	if err != nil {
-		return fmt.Errorf("something went wrong: %v", err)
+		return fmt.Errorf("failed to get find scanner \"%s\": %v", scannerName, err)
 	}
 
 	var scanUUID pgtype.UUID
@@ -32,7 +31,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		scanUUID, err = h.queries.CreateScanEntryRoot(ctx, param)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("error creating scan entry as Root User: %s", err)
 		}
 	} else {
 		param := query.CreateScanEntryIAMUserParams{
@@ -43,7 +42,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		scanUUID, err = h.queries.CreateScanEntryIAMUser(ctx, param)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("error creating scan entry as IAM User: %s", err)
 		}
 	}
 
@@ -52,22 +51,22 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		rootUUID, err = h.queries.GetRootAccountIDForIAMUser(ctx, accountID)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("error retrieving root id from iamUser: %s", err)
 		}
 	}
 
 	assets, err := h.queries.GetAllAssets(ctx, rootUUID)
 
 	if err != nil || len(assets) == 0 {
-		return errors.New("error pulling assets")
+		return fmt.Errorf("error retrieving assets, no assets found")
 	}
 
 	allVulnsSeen := make(map[string]vuln.Vulnerability)
 
 	for _, asset := range assets {
-		payload, err := scanner.CalculateCommand(asset.Os.String, "../../", flags)
+		payload, err := scanner.CalculateCommand(asset.Os.String, "/", flags)
 		if err != nil {
-			return err
+			return fmt.Errorf("error calculating scanner command for %s: %v", scannerName, err)
 		}
 
 		controlMessages := []*controlpb.ControlMessage{
@@ -91,7 +90,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 		responses, err := commands.Command(target, controlMessages)
 		if err != nil {
-			return err
+			return fmt.Errorf("error sending command to gRPC agent: %s", err)
 		}
 
 		vulnerabilitiesList, err := scanner.ParseResults(responses[0].Result)
@@ -117,12 +116,12 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 		err = h.queries.InsertNewVulnerabilities(ctx, unverifiedVulns.VulnList)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting new vulnerabilities: %s", err)
 		}
 
 		unchangedVulns, err := h.queries.RetrieveUnchangedVulnerabilities(ctx, unverifiedVulns)
 		if err != nil {
-			return err
+			return fmt.Errorf("error retrieving unchanged vulnerabilities: %s", err)
 		}
 
 		for _, vulnID := range unchangedVulns {
@@ -137,7 +136,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 		err = h.queries.BatchUpdateAVS(ctx, params)
 		if err != nil {
-			return err
+			return fmt.Errorf("error updating asset_vulnerability_scan table: %s", err)
 		}
 	}
 
@@ -156,17 +155,19 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		AccountID: accountID,
 		VulnList:  vulnIDs,
 	}
+
 	if err := h.queries.BatchUpdateVulnerabilityState(ctx, param); err != nil {
-		return err
+		return fmt.Errorf("error updating vulnerabity states: %s", err)
 	}
+
 	vulnJSON, err := vuln.GetVulnerabilitiesJSON(changedVulns)
 	if err != nil {
-		return err
+		return fmt.Errorf("error converting vulnerabilities to JSON: %s", err)
 	}
 
 	if len(changedVulns) != 0 {
 		if err := h.queries.BatchUpdateVulnerabilityData(ctx, vulnJSON); err != nil {
-			return err
+			return fmt.Errorf("error updating vulnerability data: %s", err)
 		}
 	}
 
