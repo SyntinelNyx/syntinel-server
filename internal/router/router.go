@@ -17,6 +17,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
+	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
@@ -84,12 +85,16 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
+			snapshotsHandler := snapshots.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
+			subRouter.Post("/assets/{assetID}/create-snapshot", snapshotsHandler.CreateSnapshot)
+			subRouter.Get("/assets/snapshots/{assetID}", snapshotsHandler.ListSnapshots)
 
+			
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)

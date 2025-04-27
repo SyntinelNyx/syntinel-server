@@ -12,32 +12,24 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ListSnapshotRequest struct {
-	ID        string `json:"id"`
-	Host      string `json:"host"`
-	Path      string `json:"path"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-	AssetID   string `json:"assetId"`
+// type ListSnapshotRequest struct {
+// 	AssetID string `json:"assetId"`
+// }
+
+type ListAllSnapshotResponse struct {
+	ID      string `json:"id"`
+	Size    string `json:"size"`
+	EndTime string `json:"endTime"`
 }
 
 func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
-
-	var ListSnapshotRequest ListSnapshotRequest
-
 	var rootId pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
-
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&ListSnapshotRequest); err != nil {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid Request", err)
-		return
-	}
 
 	account := auth.GetClaims(r.Context())
 	if account.AccountType != "root" {
@@ -50,9 +42,34 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		rootId = account.AccountID
 	}
 
-	uuidString := fmt.Sprintf("%s-%s-%s-%s-%s", ListSnapshotRequest.AssetID[0:8], ListSnapshotRequest.AssetID[8:12], ListSnapshotRequest.AssetID[12:16], ListSnapshotRequest.AssetID[16:20], ListSnapshotRequest.AssetID[20:])
-	if err := assetID.Scan(uuidString); err != nil {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
+	assetIDStr := chi.URLParam(r, "assetID")
+	if assetIDStr == "" {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Missing asset ID", nil)
+		return
+	}
+    
+	// Check if the UUID already has hyphens
+	if len(assetIDStr) == 36 && assetIDStr[8] == '-' && assetIDStr[13] == '-' && assetIDStr[18] == '-' && assetIDStr[23] == '-' {
+		// UUID already has the correct format
+		if err := assetID.Scan(assetIDStr); err != nil {
+			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
+			return
+		}
+	} else if len(assetIDStr) == 32 {
+		// UUID without hyphens, format it
+		uuidString := fmt.Sprintf("%s-%s-%s-%s-%s", 
+			assetIDStr[0:8], 
+			assetIDStr[8:12], 
+			assetIDStr[12:16], 
+			assetIDStr[16:20], 
+			assetIDStr[20:])
+		
+		if err := assetID.Scan(uuidString); err != nil {
+			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
+			return
+		}
+	} else {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", nil)
 		return
 	}
 
@@ -100,11 +117,9 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		filteredSnapshots := make([]map[string]interface{}, 0, len(snapshots))
 		for _, snapshot := range snapshots {
 			filtered := map[string]interface{}{
-				"id":        snapshot["id"],
-				"host":      snapshot["host"],
-				"path":      snapshot["path"],
-				"startTime": snapshot["startTime"],
-				"endTime":   snapshot["endTime"],
+				"id":      snapshot["id"],
+				"size":    snapshot["totalSize"],
+				"endTime": snapshot["endTime"],
 			}
 			filteredSnapshots = append(filteredSnapshots, filtered)
 		}
