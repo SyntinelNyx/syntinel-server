@@ -84,7 +84,15 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ConnectKopiaS3Repository(agentip.String())
+	logger.Info("Agent IP: %s", agentip)
+
+	test, err := ConnectKopiaS3Repository(agentip.String())
+	if err != nil {
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Error connecting to Kopia S3 repository: %v", err)
+		logger.Error("Error connecting to Kopia S3 repository: %v", err)
+		return
+	}
+	logger.Info("Kopia S3 repository connected successfully: %s", test)
 
 	controlMessages := []*controlpb.ControlMessage{
 		{
@@ -96,7 +104,10 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 	responses, err := commands.Command(agentip.String(), controlMessages)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Error listing snapshots: %v", err)
+		logger.Error("Error listing snapshots: %v", err)
+		return
 	}
+	logger.Info("kopia list - responses: %v", responses)
 
 	// Process the response and return uuid and result
 	if len(responses) > 0 {
@@ -111,6 +122,7 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal([]byte(result), &snapshots)
 		if err != nil {
 			response.RespondWithError(w, r, http.StatusBadRequest, "error parsing snapshot JSON: %v", err)
+			return
 		}
 
 		// Create a filtered response with only the important fields
@@ -128,6 +140,7 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		filteredJSON, err := json.MarshalIndent(filteredSnapshots, "", "  ")
 		if err != nil {
 			response.RespondWithError(w, r, http.StatusBadRequest, "error formatting snapshots: %v", err)
+			return
 		}
 		response.RespondWithJSON(w, http.StatusOK, filteredJSON)
 	}
