@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- name: InsertTelemetryData :many
 WITH inserted_telemetry AS (
     INSERT INTO telemetry (
@@ -29,12 +30,18 @@ INSERT INTO telemetry_asset (
 RETURNING (SELECT telemetry_id FROM inserted_telemetry);
 
 
+=======
+>>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 -- name: GetLatestTelemetryALL :many
 SELECT 
     a.asset_id,
     a.ip_address,
     si.hostname,
+<<<<<<< HEAD
     t.telemetry_time,
+=======
+    t.scan_time,
+>>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
     t.cpu_usage,
     t.mem_used_percent,
     t.disk_used_percent
@@ -52,7 +59,11 @@ ORDER BY a.ip_address;
 
 -- name: GetTelemetryByTime :one
 SELECT 
+<<<<<<< HEAD
     time_bucket($1 , t.scan_time) AS hour,
+=======
+    time_bucket('1 hour', t.scan_time) AS hour,
+>>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
     ta.asset_id,
     a.ip_address,
     AVG(t.cpu_usage) AS avg_cpu,
@@ -62,6 +73,10 @@ FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
 JOIN root_accounts ra ON ta.root_account_id = ra.account_id
+<<<<<<< HEAD
 WHERE t.scan_time > NOW() - INTERVAL $2
+=======
+WHERE t.scan_time > NOW() - INTERVAL '24 hours'
+>>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 GROUP BY hour, ta.asset_id, a.ip_address
 ORDER BY hour DESC, ta.asset_id;
