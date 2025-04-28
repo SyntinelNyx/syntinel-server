@@ -93,6 +93,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
+			subRouter.Get("/assets/{id}", assetHandler.RetrieveData)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
