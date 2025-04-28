@@ -172,3 +172,102 @@ func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asse
 	)
 	return i, err
 }
+
+const getAssetInfoById = `-- name: GetAssetInfoById :one
+SELECT
+  a.asset_id,
+  a.ip_address,
+  a.sysinfo_id,
+  a.root_account_id,
+  a.registered_at,
+  s.id AS system_info_id,
+  s.hostname,
+  s.uptime,
+  s.boot_time,
+  s.procs,
+  s.os,
+  s.platform,
+  s.platform_family,
+  s.platform_version,
+  s.kernel_version,
+  s.kernel_arch,
+  s.virtualization_system,
+  s.virtualization_role,
+  s.host_id,
+  s.cpu_vendor_id,
+  s.cpu_cores,
+  s.cpu_model_name,
+  s.cpu_mhz,
+  s.cpu_cache_size,
+  s.memory,
+  s.disk,
+  s.created_at AS system_info_created_at
+FROM assets a
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.asset_id = $1
+`
+
+type GetAssetInfoByIdRow struct {
+	AssetID              pgtype.UUID
+	IpAddress            netip.Addr
+	SysinfoID            pgtype.UUID
+	RootAccountID        pgtype.UUID
+	RegisteredAt         pgtype.Timestamptz
+	SystemInfoID         pgtype.UUID
+	Hostname             pgtype.Text
+	Uptime               pgtype.Int8
+	BootTime             pgtype.Int8
+	Procs                pgtype.Int8
+	Os                   pgtype.Text
+	Platform             pgtype.Text
+	PlatformFamily       pgtype.Text
+	PlatformVersion      pgtype.Text
+	KernelVersion        pgtype.Text
+	KernelArch           pgtype.Text
+	VirtualizationSystem pgtype.Text
+	VirtualizationRole   pgtype.Text
+	HostID               pgtype.Text
+	CpuVendorID          pgtype.Text
+	CpuCores             pgtype.Int4
+	CpuModelName         pgtype.Text
+	CpuMhz               pgtype.Float8
+	CpuCacheSize         pgtype.Int4
+	Memory               pgtype.Int8
+	Disk                 pgtype.Int8
+	SystemInfoCreatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (GetAssetInfoByIdRow, error) {
+	row := q.db.QueryRow(ctx, getAssetInfoById, assetID)
+	var i GetAssetInfoByIdRow
+	err := row.Scan(
+		&i.AssetID,
+		&i.IpAddress,
+		&i.SysinfoID,
+		&i.RootAccountID,
+		&i.RegisteredAt,
+		&i.SystemInfoID,
+		&i.Hostname,
+		&i.Uptime,
+		&i.BootTime,
+		&i.Procs,
+		&i.Os,
+		&i.Platform,
+		&i.PlatformFamily,
+		&i.PlatformVersion,
+		&i.KernelVersion,
+		&i.KernelArch,
+		&i.VirtualizationSystem,
+		&i.VirtualizationRole,
+		&i.HostID,
+		&i.CpuVendorID,
+		&i.CpuCores,
+		&i.CpuModelName,
+		&i.CpuMhz,
+		&i.CpuCacheSize,
+		&i.Memory,
+		&i.Disk,
+		&i.SystemInfoCreatedAt,
+	)
+	return i, err
+}

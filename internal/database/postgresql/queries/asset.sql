@@ -51,3 +51,37 @@ SELECT a.asset_id,
 FROM assets a
 JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1;
+
+-- name: GetAssetInfoById :one
+SELECT
+  a.asset_id,
+  a.ip_address,
+  a.sysinfo_id,
+  a.root_account_id,
+  a.registered_at,
+  s.id AS system_info_id,
+  s.hostname,
+  s.uptime,
+  s.boot_time,
+  s.procs,
+  s.os,
+  s.platform,
+  s.platform_family,
+  s.platform_version,
+  s.kernel_version,
+  s.kernel_arch,
+  s.virtualization_system,
+  s.virtualization_role,
+  s.host_id,
+  s.cpu_vendor_id,
+  s.cpu_cores,
+  s.cpu_model_name,
+  s.cpu_mhz,
+  s.cpu_cache_size,
+  s.memory,
+  s.disk,
+  s.created_at AS system_info_created_at
+FROM assets a
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.asset_id = $1;
+
