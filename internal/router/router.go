@@ -18,6 +18,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/shell"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 )
 
@@ -88,12 +89,15 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			scanHandler := scan.NewHandler(r.queries)
 			vulnHandler := vuln.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
+			shellHandler := shell.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
 			subRouter.Get("/assets/{id}", assetHandler.RetrieveData)
+
+			subRouter.Post("/assets/{assetID}/shell", shellHandler.Shell)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
@@ -131,3 +135,103 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 func (r *Router) GetRouter() *chi.Mux {
 	return r.router
 }
+
+
+useEffect(() => {
+    // Initialize terminal
+    if (typeof window !== 'undefined' && terminalRef.current) {
+      // Clean up previous terminal instance if it exists
+      if (xtermRef.current) {
+        xtermRef.current.dispose();
+      }
+      
+      // Create new terminal
+      const term = new XTerm({
+        cursorBlink: true,
+        fontSize: 14,
+        theme: {
+          background: '#1a1b26',
+          foreground: '#c0caf5',
+          cursor: '#c0caf5',
+        }
+      });
+      
+      xtermRef.current = term;
+      term.open(terminalRef.current);
+      term.write('Connected to asset: \x1B[1;3;32m' + slug + '\x1B[0m\r\n$ ');
+      
+      term.onData((data) => {
+        // Handle backspace
+        if (data === '\x7F') {
+          if (commandBuffer.length > 0) {
+            term.write('\b \b'); // Erase character
+            setCommandBuffer(prev => prev.substring(0, prev.length - 1));
+          }
+          return;
+        }
+        
+        // Echo back input for visual feedback
+        term.write(data);
+        
+        // If enter key is pressed, process the command
+        if (data === '\r') {
+          // Store command to be processed
+          const command = commandBuffer.trim();
+
+          console.log('Command entered:', command);
+          
+          // Clear the buffer for next command
+          setCommandBuffer('');
+          
+          // Execute command
+          if (command) {
+            term.write('\r\n');
+            executeCommand(command, term);
+          } else {
+            // Just show a new prompt for empty commands
+            term.write('\r\n$ ');
+          }
+        } else {
+          // Add to command buffer
+          setCommandBuffer(prev => prev + data);
+        }
+      });
+    }
+    const executeCommand = async (command: string, term: XTerm) => {
+      try {
+        term.write(`Executing command: ${command}\r\n`);
+        
+        // Make API request to execute command on the asset
+        const response = await apiFetch(`/assets/${slug}/shell`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ command }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Command failed with status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Display command output
+        term.write(`${result.output}\r\n`);
+      } catch (error) {
+        // Handle errors
+        console.error('Command execution error:', error);
+        term.write(`\x1B[1;3;31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1B[0m\r\n`);
+      } finally {
+        // Show prompt for next command
+        term.write('$ ');
+      }
+    };
+
+    return () => {
+      // Clean up on unmount
+      if (xtermRef.current) {
+        xtermRef.current.dispose();
+      }
+    };
+  }, [slug]);
