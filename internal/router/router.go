@@ -81,7 +81,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
-			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 3))
+			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 5))
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
