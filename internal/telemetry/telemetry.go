@@ -3,14 +3,14 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type SysInfo struct {
@@ -33,17 +33,10 @@ type Disk struct {
 	UsedPercent float64 `json:"usedPercent"`
 }
 
-type TelemetryRequest struct {
-	HostID  string `json:"hostId"`
-	AssetID string `json:"assetId"`
-}
+func (h *Handler) TelemetryRunner() error {
 
-func (h *Handler) telemetryRunner() {
-	var sysinfo SysInfo
-	var memory Memory
-	var disk Disk
-
-	ticker := time.NewTicker(1 * time.Minute)
+	// ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(5 * time.Second) //debug
 	defer ticker.Stop()
 	ctx := context.Background()
 
@@ -51,8 +44,9 @@ func (h *Handler) telemetryRunner() {
 	for {
 		select {
 		case <-ticker.C:
+			logger.Info("Collecting telemetry data...")
 			// Get all assets to collect telemetry from
-			assets, err := h.queries.GetAllAssets(ctx, pgtype.UUID{})
+			assets, err := h.queries.GetAllAssetIPs(ctx)
 			if err != nil {
 				logger.Error("Failed to get assets for telemetry: %v", err)
 				continue
@@ -67,13 +61,24 @@ func (h *Handler) telemetryRunner() {
 				// Prepare control message for sysinfo command
 				controlMessages := []*controlpb.ControlMessage{
 					{
-						Command: "exec",
-						Payload: "sysinfo",
+						Command: "sysinfo",
 					},
 				}
 
+				var target string
+
+				ip := net.ParseIP(asset.IpAddress.String())
+				if ip == nil {
+					return fmt.Errorf("Ip address is nil")
+				}
+				if ip.To4() != nil {
+					target = fmt.Sprintf("%s:50051", asset.IpAddress)
+				} else {
+					target = fmt.Sprintf("[%s]:50051", asset.IpAddress)
+				}
+
 				// Execute sysinfo command on the asset
-				responses, err := commands.Command(asset.IpAddress.String(), controlMessages)
+				responses, err := commands.Command(target, controlMessages)
 				if err != nil {
 					logger.Error("Failed to execute sysinfo on %s: %v", asset.IpAddress.String(), err)
 					continue
@@ -82,41 +87,19 @@ func (h *Handler) telemetryRunner() {
 				// Parse the response
 				if len(responses) > 0 {
 					var sysinfo SysInfo
-					if err := json.Unmarshal([]byte(responses[0]), &sysinfo); err != nil {
+					// var memory Memory
+					// var disk Disk
+					result := responses[0].GetResult()
+					err := json.Unmarshal([]byte(result), &sysinfo)
+					if err != nil {
 						logger.Error("Failed to parse sysinfo response from %s: %v", asset.IpAddress.String(), err)
-						continue
-					}
-
-					// Get root account ID for this asset
-					var rootID pgtype.UUID
-					rootID.Scan(asset.RootAccountID)
-
-					// Insert telemetry data into database
-					telemetryID := pgtype.UUID{}
-					err = telemetryID.Scan(uuid.New())
-					if err != nil {
-						logger.Error("Failed to generate UUID: %v", err)
-						continue
-					}
-
-					telemetryTime := pgtype.Timestamptz{}
-					err = telemetryTime.Scan(time.Now())
-					if err != nil {
-						logger.Error("Failed to generate timestamp: %v", err)
-						continue
-					}
-
-					assetID := pgtype.UUID{}
-					err = assetID.Scan(asset.AssetID)
-					if err != nil {
-						logger.Error("Failed to parse asset ID: %v", err)
 						continue
 					}
 
 					// Prepare parameters for database insertion
 					params := query.InsertTelemetryDataParams{
-						TelemetryID:     telemetryID,
-						TelemetryTime:   telemetryTime,
+						// TelemetryID:     telemetryID,
+						// TelemetryTime:   telemetryTime,
 						CpuUsage:        sysinfo.CpuUsage,
 						MemTotal:        int64(sysinfo.MemUsage.Total),
 						MemAvailable:    int64(sysinfo.MemUsage.Available),
@@ -126,12 +109,12 @@ func (h *Handler) telemetryRunner() {
 						DiskFree:        int64(sysinfo.DiskUsage.Free),
 						DiskUsed:        int64(sysinfo.DiskUsage.Used),
 						DiskUsedPercent: sysinfo.DiskUsage.UsedPercent,
-						AssetID:         assetID,
-						RootAccountID:   rootID,
+						AssetID:         asset.AssetID,
+						RootAccountID:   asset.RootAccountID,
 					}
 
 					// Insert the telemetry data
-					_, err = queries.InsertTelemetryData(ctx, params)
+					err = h.queries.InsertTelemetryData(ctx, params)
 					if err != nil {
 						logger.Error("Failed to insert telemetry data for %s: %v", asset.IpAddress.String(), err)
 						continue

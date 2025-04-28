@@ -208,6 +208,7 @@ type Telemetry struct {
 }
 
 type TelemetryAsset struct {
+	TelemetryTime pgtype.Timestamptz
 	TelemetryID   pgtype.UUID
 	AssetID       pgtype.UUID
 	RootAccountID pgtype.UUID

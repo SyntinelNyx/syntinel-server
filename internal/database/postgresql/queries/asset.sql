@@ -56,3 +56,11 @@ WHERE a.root_account_id = $1;
 SELECT ip_address
 FROM assets
 WHERE asset_id = $1 AND root_account_id = $2;
+
+-- name: GetAllAssetIPs :many
+SELECT 
+  asset_id,
+  ip_address,
+  root_account_id
+FROM assets
+ORDER BY root_account_id, asset_id;

@@ -12,16 +12,67 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getAssetUptime = `-- name: GetAssetUptime :many
+WITH asset_uptime_diff AS (
+  SELECT
+    ta.asset_id,
+    ta.telemetry_id,
+    t.telemetry_time,
+    LAG(t.telemetry_time) OVER (PARTITION BY ta.asset_id ORDER BY t.telemetry_time) AS prev_telemetry_time,
+    EXTRACT(EPOCH FROM (t.telemetry_time - LAG(t.telemetry_time) OVER (PARTITION BY ta.asset_id ORDER BY t.telemetry_time))) AS time_diff
+  FROM
+    telemetry_asset ta
+  JOIN
+    telemetry t ON ta.telemetry_id = t.telemetry_id
+  WHERE
+    ta.root_account_id = $1
+    AND t.telemetry_time > NOW() - INTERVAL '30 days'  -- Optional: filter by the past 30 days
+)
+SELECT
+  asset_id,
+  SUM(CASE
+        WHEN time_diff <= 300 THEN time_diff  -- 300 seconds = 5 minutes
+        ELSE 0  -- Downtime: Ignore gaps larger than 5 minutes
+      END) AS total_uptime_seconds
+FROM
+  asset_uptime_diff
+WHERE
+  prev_telemetry_time IS NOT NULL
+GROUP BY
+  asset_id
+`
+
+type GetAssetUptimeRow struct {
+	AssetID            pgtype.UUID
+	TotalUptimeSeconds int64
+}
+
+func (q *Queries) GetAssetUptime(ctx context.Context, rootAccountID pgtype.UUID) ([]GetAssetUptimeRow, error) {
+	rows, err := q.db.Query(ctx, getAssetUptime, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAssetUptimeRow
+	for rows.Next() {
+		var i GetAssetUptimeRow
+		if err := rows.Scan(&i.AssetID, &i.TotalUptimeSeconds); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestTelemetryALL = `-- name: GetLatestTelemetryALL :many
 SELECT 
     a.asset_id,
     a.ip_address,
     si.hostname,
-<<<<<<< HEAD
     t.telemetry_time,
-=======
-    t.scan_time,
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
     t.cpu_usage,
     t.mem_used_percent,
     t.disk_used_percent
@@ -29,8 +80,8 @@ FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
 JOIN system_information si ON a.sysinfo_id = si.id
-WHERE t.scan_time = (
-    SELECT MAX(t2.scan_time)
+WHERE t.telemetry_time = (
+    SELECT MAX(t2.telemetry_time)
     FROM telemetry t2
     JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
     WHERE ta2.asset_id = ta.asset_id
@@ -42,11 +93,7 @@ type GetLatestTelemetryALLRow struct {
 	AssetID         pgtype.UUID
 	IpAddress       netip.Addr
 	Hostname        pgtype.Text
-<<<<<<< HEAD
 	TelemetryTime   pgtype.Timestamptz
-=======
-	ScanTime        pgtype.Timestamptz
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 	CpuUsage        float64
 	MemUsedPercent  float64
 	DiskUsedPercent float64
@@ -65,11 +112,7 @@ func (q *Queries) GetLatestTelemetryALL(ctx context.Context) ([]GetLatestTelemet
 			&i.AssetID,
 			&i.IpAddress,
 			&i.Hostname,
-<<<<<<< HEAD
 			&i.TelemetryTime,
-=======
-			&i.ScanTime,
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 			&i.CpuUsage,
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
@@ -86,11 +129,7 @@ func (q *Queries) GetLatestTelemetryALL(ctx context.Context) ([]GetLatestTelemet
 
 const getTelemetryByTime = `-- name: GetTelemetryByTime :one
 SELECT 
-<<<<<<< HEAD
-    time_bucket($1 , t.scan_time) AS hour,
-=======
-    time_bucket('1 hour', t.scan_time) AS hour,
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
+    time_bucket($1 , t.telemetry_time) AS hour,
     ta.asset_id,
     a.ip_address,
     AVG(t.cpu_usage) AS avg_cpu,
@@ -100,23 +139,16 @@ FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
 JOIN root_accounts ra ON ta.root_account_id = ra.account_id
-<<<<<<< HEAD
-WHERE t.scan_time > NOW() - INTERVAL $2
-=======
-WHERE t.scan_time > NOW() - INTERVAL '24 hours'
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
+WHERE t.telemetry_time > NOW() - INTERVAL $2
 GROUP BY hour, ta.asset_id, a.ip_address
 ORDER BY hour DESC, ta.asset_id
 `
 
-<<<<<<< HEAD
 type GetTelemetryByTimeParams struct {
 	TimeBucket interface{}
 	Column2    pgtype.Interval
 }
 
-=======
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 type GetTelemetryByTimeRow struct {
 	Hour      interface{}
 	AssetID   pgtype.UUID
@@ -126,13 +158,8 @@ type GetTelemetryByTimeRow struct {
 	AvgDisk   float64
 }
 
-<<<<<<< HEAD
 func (q *Queries) GetTelemetryByTime(ctx context.Context, arg GetTelemetryByTimeParams) (GetTelemetryByTimeRow, error) {
 	row := q.db.QueryRow(ctx, getTelemetryByTime, arg.TimeBucket, arg.Column2)
-=======
-func (q *Queries) GetTelemetryByTime(ctx context.Context) (GetTelemetryByTimeRow, error) {
-	row := q.db.QueryRow(ctx, getTelemetryByTime)
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
 	var i GetTelemetryByTimeRow
 	err := row.Scan(
 		&i.Hour,
@@ -144,13 +171,10 @@ func (q *Queries) GetTelemetryByTime(ctx context.Context) (GetTelemetryByTimeRow
 	)
 	return i, err
 }
-<<<<<<< HEAD
 
-const insertTelemetryData = `-- name: InsertTelemetryData :many
+const insertTelemetryData = `-- name: InsertTelemetryData :exec
 WITH inserted_telemetry AS (
     INSERT INTO telemetry (
-        telemetry_id,
-        telemetry_time,
         cpu_usage,
         mem_total,
         mem_available,
@@ -161,7 +185,7 @@ WITH inserted_telemetry AS (
         disk_used,
         disk_used_percent
     ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
     )
     RETURNING telemetry_id, telemetry_time
 )
@@ -171,15 +195,12 @@ INSERT INTO telemetry_asset (
     root_account_id
 ) VALUES (
     (SELECT telemetry_id FROM inserted_telemetry),
-    $12,
-    $13
+    $10,
+    $11
 )
-RETURNING (SELECT telemetry_id FROM inserted_telemetry)
 `
 
 type InsertTelemetryDataParams struct {
-	TelemetryID     pgtype.UUID
-	TelemetryTime   pgtype.Timestamptz
 	CpuUsage        float64
 	MemTotal        int64
 	MemAvailable    int64
@@ -193,10 +214,8 @@ type InsertTelemetryDataParams struct {
 	RootAccountID   pgtype.UUID
 }
 
-func (q *Queries) InsertTelemetryData(ctx context.Context, arg InsertTelemetryDataParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, insertTelemetryData,
-		arg.TelemetryID,
-		arg.TelemetryTime,
+func (q *Queries) InsertTelemetryData(ctx context.Context, arg InsertTelemetryDataParams) error {
+	_, err := q.db.Exec(ctx, insertTelemetryData,
 		arg.CpuUsage,
 		arg.MemTotal,
 		arg.MemAvailable,
@@ -209,22 +228,5 @@ func (q *Queries) InsertTelemetryData(ctx context.Context, arg InsertTelemetryDa
 		arg.AssetID,
 		arg.RootAccountID,
 	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var telemetry_id pgtype.UUID
-		if err := rows.Scan(&telemetry_id); err != nil {
-			return nil, err
-		}
-		items = append(items, telemetry_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return err
 }
-=======
->>>>>>> 0837eca9844d7ee6c1ae0da36e420852fd57e7a2
