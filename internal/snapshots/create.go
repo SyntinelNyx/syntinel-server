@@ -9,6 +9,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/go-chi/chi/v5"
@@ -41,31 +42,13 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Missing asset ID", nil)
 		return
 	}
-
-	// Check if the UUID already has hyphens
-	if len(assetIDStr) == 36 && assetIDStr[8] == '-' && assetIDStr[13] == '-' && assetIDStr[18] == '-' && assetIDStr[23] == '-' {
-		// UUID already has the correct format
-		if err := assetID.Scan(assetIDStr); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else if len(assetIDStr) == 32 {
-		// UUID without hyphens, format it
-		uuidString := fmt.Sprintf("%s-%s-%s-%s-%s",
-			assetIDStr[0:8],
-			assetIDStr[8:12],
-			assetIDStr[12:16],
-			assetIDStr[16:20],
-			assetIDStr[20:])
-
-		if err := assetID.Scan(uuidString); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", nil)
+	
+	uuid := pgtype.UUID{}
+	if err := uuid.Scan(assetIDStr); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
 		return
 	}
+	assetID = uuid
 
 	params := query.GetIPByAssetIDParams{
 		AssetID:       assetID,
@@ -74,6 +57,7 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
 	if err != nil {
+		logger.Error("Error retrieving agent IP: %v", err)
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
 		return
 	}
@@ -107,8 +91,7 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to create snapshot", err)
 	}
-
-	// Process the responses
+	
 	for _, responder := range responses {
 		if responder.GetStatus() != "error" {
 			response.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Snapshot created successfully"})

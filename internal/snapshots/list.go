@@ -55,33 +55,15 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the UUID already has hyphens
-	if len(assetIDStr) == 36 && assetIDStr[8] == '-' && assetIDStr[13] == '-' && assetIDStr[18] == '-' && assetIDStr[23] == '-' {
-		// UUID already has the correct format
-		if err := assetID.Scan(assetIDStr); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else if len(assetIDStr) == 32 {
-		// UUID without hyphens, format it
-		uuidString := fmt.Sprintf("%s-%s-%s-%s-%s",
-			assetIDStr[0:8],
-			assetIDStr[8:12],
-			assetIDStr[12:16],
-			assetIDStr[16:20],
-			assetIDStr[20:])
-
-		if err := assetID.Scan(uuidString); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", nil)
+	uuid := pgtype.UUID{}
+	if err := uuid.Scan(assetIDStr); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
 		return
 	}
+	assetID = uuid
 
 	params := query.GetIPByAssetIDParams{
-		AssetID:       assetID, // Convert UUID to string if needed
+		AssetID:       assetID,
 		RootAccountID: rootId,
 	}
 
@@ -122,11 +104,10 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Process the response and return uuid and result
 	if len(responses) > 0 {
 		result := responses[0].GetResult()
 
-		// Parse the JSON result
+	
 		var kopia KopiaOutput
 		err := json.Unmarshal([]byte(result), &kopia)
 		if err != nil {
@@ -134,7 +115,6 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Create a filtered response with only the important fields
 		var snapshotsResponse []ListAllSnapshotResponse
 		for _, snapshot := range kopia {
 			data := ListAllSnapshotResponse{
