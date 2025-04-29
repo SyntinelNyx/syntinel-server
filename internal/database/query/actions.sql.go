@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getActionById = `-- name: GetActionById :one
+SELECT action_type, action_payload 
+FROM actions
+WHERE action_id = $1
+`
+
+type GetActionByIdRow struct {
+	ActionType    string
+	ActionPayload string
+}
+
+func (q *Queries) GetActionById(ctx context.Context, actionID pgtype.UUID) (GetActionByIdRow, error) {
+	row := q.db.QueryRow(ctx, getActionById, actionID)
+	var i GetActionByIdRow
+	err := row.Scan(&i.ActionType, &i.ActionPayload)
+	return i, err
+}
+
 const getAllActions = `-- name: GetAllActions :many
 SELECT
   action_id,
