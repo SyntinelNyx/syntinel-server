@@ -100,6 +100,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
 
 			subRouter.Post("/scan/launch", scanHandler.Launch)
+			subRouter.Post("/scan/update-notes", scanHandler.UpdateNotes)
 			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
 			subRouter.Get("/scan/retrieve-scan-parameters", scanHandler.RetrieveScanParameters)
 
