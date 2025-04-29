@@ -97,6 +97,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/assets", assetHandler.Retrieve)
 
 			subRouter.Get("/uptime", telemetryHandler.Uptime)
+			subRouter.Get("/latest-usage", telemetryHandler.LatestUsage)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)

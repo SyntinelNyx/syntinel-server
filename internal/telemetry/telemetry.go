@@ -35,8 +35,8 @@ type Disk struct {
 
 func (h *Handler) TelemetryRunner() error {
 
-	// ticker := time.NewTicker(1 * time.Minute)
-	ticker := time.NewTicker(5 * time.Second) //debug
+	ticker := time.NewTicker(1 * time.Minute)
+	// ticker := time.NewTicker(10 * time.Second) //debug
 	defer ticker.Stop()
 	ctx := context.Background()
 
@@ -98,8 +98,6 @@ func (h *Handler) TelemetryRunner() error {
 
 					// Prepare parameters for database insertion
 					params := query.InsertTelemetryDataParams{
-						// TelemetryID:     telemetryID,
-						// TelemetryTime:   telemetryTime,
 						CpuUsage:        sysinfo.CpuUsage,
 						MemTotal:        int64(sysinfo.MemUsage.Total),
 						MemAvailable:    int64(sysinfo.MemUsage.Available),

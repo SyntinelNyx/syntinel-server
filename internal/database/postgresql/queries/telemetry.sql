@@ -16,20 +16,43 @@ WITH inserted_telemetry AS (
     RETURNING telemetry_id, telemetry_time
 )
 INSERT INTO telemetry_asset (
+    telemetry_time,
     telemetry_id,
     asset_id,
     root_account_id
-) VALUES (
-    (SELECT telemetry_id FROM inserted_telemetry),
-    $10,
-    $11
-);
+) 
+SELECT 
+    telemetry_time,
+    telemetry_id,
+    $10 AS asset_id,
+    $11 AS root_account_id
+FROM inserted_telemetry;
 
--- name: GetLatestTelemetryALL :many
+-- -- name: GetLatestTelemetryALL :many
+-- SELECT 
+--     a.asset_id,
+--     a.ip_address,
+--     si.hostname,
+--     t.telemetry_time,
+--     t.cpu_usage,
+--     t.mem_used_percent,
+--     t.disk_used_percent
+-- FROM telemetry t
+-- JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
+-- JOIN assets a ON ta.asset_id = a.asset_id
+-- JOIN system_information si ON a.sysinfo_id = si.id
+-- WHERE t.telemetry_time = (
+--     SELECT MAX(t2.telemetry_time)
+--     FROM telemetry t2
+--     JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
+--     WHERE ta2.asset_id = ta.asset_id
+-- )
+-- ORDER BY a.ip_address;
+
+-- name: GetLatestTelemetryUsage :one
 SELECT 
     a.asset_id,
     a.ip_address,
-    si.hostname,
     t.telemetry_time,
     t.cpu_usage,
     t.mem_used_percent,
@@ -37,14 +60,12 @@ SELECT
 FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
-JOIN system_information si ON a.sysinfo_id = si.id
 WHERE t.telemetry_time = (
     SELECT MAX(t2.telemetry_time)
     FROM telemetry t2
     JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
     WHERE ta2.asset_id = ta.asset_id
-)
-ORDER BY a.ip_address;
+);
 
 -- name: GetTelemetryByTime :one
 SELECT 

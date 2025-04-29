@@ -67,11 +67,11 @@ func (q *Queries) GetAssetUptime(ctx context.Context, rootAccountID pgtype.UUID)
 	return items, nil
 }
 
-const getLatestTelemetryALL = `-- name: GetLatestTelemetryALL :many
+const getLatestTelemetryUsage = `-- name: GetLatestTelemetryUsage :one
+
 SELECT 
     a.asset_id,
     a.ip_address,
-    si.hostname,
     t.telemetry_time,
     t.cpu_usage,
     t.mem_used_percent,
@@ -79,52 +79,59 @@ SELECT
 FROM telemetry t
 JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
 JOIN assets a ON ta.asset_id = a.asset_id
-JOIN system_information si ON a.sysinfo_id = si.id
 WHERE t.telemetry_time = (
     SELECT MAX(t2.telemetry_time)
     FROM telemetry t2
     JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
     WHERE ta2.asset_id = ta.asset_id
 )
-ORDER BY a.ip_address
 `
 
-type GetLatestTelemetryALLRow struct {
+type GetLatestTelemetryUsageRow struct {
 	AssetID         pgtype.UUID
 	IpAddress       netip.Addr
-	Hostname        pgtype.Text
 	TelemetryTime   pgtype.Timestamptz
 	CpuUsage        float64
 	MemUsedPercent  float64
 	DiskUsedPercent float64
 }
 
-func (q *Queries) GetLatestTelemetryALL(ctx context.Context) ([]GetLatestTelemetryALLRow, error) {
-	rows, err := q.db.Query(ctx, getLatestTelemetryALL)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetLatestTelemetryALLRow
-	for rows.Next() {
-		var i GetLatestTelemetryALLRow
-		if err := rows.Scan(
-			&i.AssetID,
-			&i.IpAddress,
-			&i.Hostname,
-			&i.TelemetryTime,
-			&i.CpuUsage,
-			&i.MemUsedPercent,
-			&i.DiskUsedPercent,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+// -- name: GetLatestTelemetryALL :many
+// SELECT
+//
+//	a.asset_id,
+//	a.ip_address,
+//	si.hostname,
+//	t.telemetry_time,
+//	t.cpu_usage,
+//	t.mem_used_percent,
+//	t.disk_used_percent
+//
+// FROM telemetry t
+// JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
+// JOIN assets a ON ta.asset_id = a.asset_id
+// JOIN system_information si ON a.sysinfo_id = si.id
+// WHERE t.telemetry_time = (
+//
+//	SELECT MAX(t2.telemetry_time)
+//	FROM telemetry t2
+//	JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
+//	WHERE ta2.asset_id = ta.asset_id
+//
+// )
+// ORDER BY a.ip_address;
+func (q *Queries) GetLatestTelemetryUsage(ctx context.Context) (GetLatestTelemetryUsageRow, error) {
+	row := q.db.QueryRow(ctx, getLatestTelemetryUsage)
+	var i GetLatestTelemetryUsageRow
+	err := row.Scan(
+		&i.AssetID,
+		&i.IpAddress,
+		&i.TelemetryTime,
+		&i.CpuUsage,
+		&i.MemUsedPercent,
+		&i.DiskUsedPercent,
+	)
+	return i, err
 }
 
 const getTelemetryByTime = `-- name: GetTelemetryByTime :one
@@ -190,14 +197,17 @@ WITH inserted_telemetry AS (
     RETURNING telemetry_id, telemetry_time
 )
 INSERT INTO telemetry_asset (
+    telemetry_time,
     telemetry_id,
     asset_id,
     root_account_id
-) VALUES (
-    (SELECT telemetry_id FROM inserted_telemetry),
-    $10,
-    $11
-)
+) 
+SELECT 
+    telemetry_time,
+    telemetry_id,
+    $10 AS asset_id,
+    $11 AS root_account_id
+FROM inserted_telemetry
 `
 
 type InsertTelemetryDataParams struct {
