@@ -95,6 +95,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
+			subRouter.Get("/assets/min", assetHandler.RetrieveMin)
 			subRouter.Get("/assets/{id}", assetHandler.RetrieveData)
 
 			subRouter.Get("/action/retrieve", actionHandler.Retrieve)

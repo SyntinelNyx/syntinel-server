@@ -52,6 +52,13 @@ FROM assets a
 JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1;
 
+-- name: GetAllAssetsMin :many
+SELECT a.asset_id,
+  s.hostname
+FROM assets a
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.root_account_id = $1;
+
 -- name: GetAssetInfoById :one
 SELECT
   a.asset_id,

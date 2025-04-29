@@ -155,6 +155,39 @@ func (q *Queries) GetAllAssets(ctx context.Context, rootAccountID pgtype.UUID) (
 	return items, nil
 }
 
+const getAllAssetsMin = `-- name: GetAllAssetsMin :many
+SELECT a.asset_id,
+  s.hostname
+FROM assets a
+JOIN system_information s ON a.sysinfo_id = s.id
+WHERE a.root_account_id = $1
+`
+
+type GetAllAssetsMinRow struct {
+	AssetID  pgtype.UUID
+	Hostname pgtype.Text
+}
+
+func (q *Queries) GetAllAssetsMin(ctx context.Context, rootAccountID pgtype.UUID) ([]GetAllAssetsMinRow, error) {
+	rows, err := q.db.Query(ctx, getAllAssetsMin, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllAssetsMinRow
+	for rows.Next() {
+		var i GetAllAssetsMinRow
+		if err := rows.Scan(&i.AssetID, &i.Hostname); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAsset = `-- name: GetAsset :one
 SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
 WHERE root_account_id = $1
