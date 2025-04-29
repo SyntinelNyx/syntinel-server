@@ -37,3 +37,13 @@ func GetScanner(scannerName string) (Scanner, error) {
 
 	return scanner, nil
 }
+
+func GetRegisteredScanners() []string {
+	var scannerNames []string
+
+	for name := range registeredScanners {
+		scannerNames = append(scannerNames, name)
+	}
+
+	return scannerNames
+}

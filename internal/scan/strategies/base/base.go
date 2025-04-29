@@ -2,6 +2,8 @@ package base
 
 import (
 	"fmt"
+
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/flags"
 )
 
 type PayloadFunctions interface {
@@ -13,12 +15,12 @@ type PayloadFunctions interface {
 type BaseScanner struct {
 	ScannerName      string
 	FilePath         string
-	Flags            interface{}
+	Flags            flags.FlagSet
 	PayloadFunctions interface{}
 }
 
 // Default CalculateCommand logic, concrete class must call base
-func (b *BaseScanner) CalculateCommand(OS string, filePath string, flags interface{}, p PayloadFunctions) (string, error) {
+func (b *BaseScanner) CalculateCommand(OS string, filePath string, flags flags.FlagSet, p PayloadFunctions) (string, error) {
 	b.FilePath = filePath
 	b.Flags = flags
 
