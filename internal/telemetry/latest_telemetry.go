@@ -130,26 +130,3 @@ func parseAllTelemetryData(data []query.GetAllAssetUsageByTimeRow) []LatestUsage
 
 	return parsedData
 }
-
-// SELECT
-//     ta.asset_id,
-//     date_trunc('hour', t.telemetry_time) AS hour,
-//     AVG(t.cpu_usage) AS avg_cpu_usage,
-//     AVG(t.mem_used_percent) AS avg_mem_used_percent,
-//     AVG(t.disk_used_percent) AS avg_disk_used_percent,
-//     COUNT(*) AS sample_count,
-//     MIN(t.telemetry_time) AS period_start,
-//     MAX(t.telemetry_time) AS period_end
-// FROM
-//     telemetry_asset ta
-// JOIN
-//     telemetry t ON ta.telemetry_id = t.telemetry_id
-// WHERE
-//     ta.root_account_id = 'a2fce64d-4620-43c5-a988-4fd2ce7984b1'
-//     AND t.telemetry_time > NOW() - INTERVAL '1 day'
-// GROUP BY
-//     ta.asset_id,
-//     date_trunc('hour', t.telemetry_time)
-// ORDER BY
-//     ta.asset_id,
-//     hour ASC;
