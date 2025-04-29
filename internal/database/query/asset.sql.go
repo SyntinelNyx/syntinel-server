@@ -107,6 +107,41 @@ func (q *Queries) AddAsset(ctx context.Context, arg AddAssetParams) error {
 	return err
 }
 
+const getAllAssetIPs = `-- name: GetAllAssetIPs :many
+SELECT 
+  asset_id,
+  ip_address,
+  root_account_id
+FROM assets
+ORDER BY root_account_id, asset_id
+`
+
+type GetAllAssetIPsRow struct {
+	AssetID       pgtype.UUID
+	IpAddress     netip.Addr
+	RootAccountID pgtype.UUID
+}
+
+func (q *Queries) GetAllAssetIPs(ctx context.Context) ([]GetAllAssetIPsRow, error) {
+	rows, err := q.db.Query(ctx, getAllAssetIPs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllAssetIPsRow
+	for rows.Next() {
+		var i GetAllAssetIPsRow
+		if err := rows.Scan(&i.AssetID, &i.IpAddress, &i.RootAccountID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllAssets = `-- name: GetAllAssets :many
 SELECT a.asset_id,
   s.hostname,
@@ -173,6 +208,7 @@ func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asse
 	return i, err
 }
 
+<<<<<<< HEAD
 const getAssetInfoById = `-- name: GetAssetInfoById :one
 SELECT
   a.asset_id,
@@ -270,4 +306,22 @@ func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (Ge
 		&i.SystemInfoCreatedAt,
 	)
 	return i, err
+=======
+const getIPByAssetID = `-- name: GetIPByAssetID :one
+SELECT ip_address
+FROM assets
+WHERE asset_id = $1 AND root_account_id = $2
+`
+
+type GetIPByAssetIDParams struct {
+	AssetID       pgtype.UUID
+	RootAccountID pgtype.UUID
+}
+
+func (q *Queries) GetIPByAssetID(ctx context.Context, arg GetIPByAssetIDParams) (netip.Addr, error) {
+	row := q.db.QueryRow(ctx, getIPByAssetID, arg.AssetID, arg.RootAccountID)
+	var ip_address netip.Addr
+	err := row.Scan(&ip_address)
+	return ip_address, err
+>>>>>>> f95921db1dca8605a7280d77a0370f5f2c38e62f
 }

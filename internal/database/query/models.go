@@ -195,7 +195,7 @@ type SystemInformation struct {
 
 type Telemetry struct {
 	TelemetryID     pgtype.UUID
-	ScanTime        pgtype.Timestamptz
+	TelemetryTime   pgtype.Timestamptz
 	CpuUsage        float64
 	MemTotal        int64
 	MemAvailable    int64
@@ -208,6 +208,7 @@ type Telemetry struct {
 }
 
 type TelemetryAsset struct {
+	TelemetryTime pgtype.Timestamptz
 	TelemetryID   pgtype.UUID
 	AssetID       pgtype.UUID
 	RootAccountID pgtype.UUID
