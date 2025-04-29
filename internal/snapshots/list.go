@@ -125,5 +125,8 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 			snapshotsResponse = append(snapshotsResponse, data)
 		}
 		response.RespondWithJSON(w, http.StatusOK, snapshotsResponse)
+	} else {
+		response.RespondWithError(w, r, http.StatusInternalServerError, "No snapshots found", nil)
+		return
 	}
 }
