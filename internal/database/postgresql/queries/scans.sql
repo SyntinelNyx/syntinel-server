@@ -3,6 +3,10 @@ INSERT INTO scans (scanner_name, root_account_id)
 VALUES ($1, $2)
 RETURNING scan_id;
 
+-- name: RemoveScanEntry :exec
+DELETE FROM scans
+WHERE scan_id = $1;
+
 -- name: CreateScanEntryIAMUser :one
 INSERT INTO scans (scanner_name, root_account_id, scanned_by_user)
 VALUES (

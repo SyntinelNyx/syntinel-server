@@ -90,7 +90,8 @@ SELECT
   a.asset_id, 
   a.ip_address, 
   s.os,
-  a.root_account_id
+  a.root_account_id,
+  s.hostname
 FROM assets a
 JOIN system_information s ON s.id = a.sysinfo_id
 WHERE s.hostname = ANY(@hostnames::text[]);
