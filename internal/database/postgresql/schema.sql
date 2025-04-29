@@ -257,17 +257,16 @@ SELECT create_hypertable(
     by_range('telemetry_time'),
     if_not_exists => TRUE,
     migrate_data => TRUE
-  );
+);
 
 CREATE TABLE IF NOT EXISTS telemetry_asset (
-  telemetry_time TIMESTAMPTZ,
   telemetry_id UUID NOT NULL,
   asset_id UUID NOT NULL,
   root_account_id UUID NOT NULL,
   -- PRIMARY KEY (telemetry_id, asset_id),
   PRIMARY KEY (telemetry_time, telemetry_id, asset_id),
-  -- FOREIGN KEY (telemetry_id) REFERENCES telemetry (telemetry_id),
-  FOREIGN KEY (telemetry_time, telemetry_id) REFERENCES telemetry (telemetry_time, telemetry_id),
+  FOREIGN KEY (telemetry_id) REFERENCES telemetry (telemetry_id),
+  -- FOREIGN KEY (telemetry_time, telemetry_id) REFERENCES telemetry (telemetry_time, telemetry_id),
   FOREIGN KEY (asset_id) REFERENCES assets (asset_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );

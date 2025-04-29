@@ -35,8 +35,8 @@ type Disk struct {
 
 func (h *Handler) TelemetryRunner() error {
 
-	ticker := time.NewTicker(1 * time.Minute)
-	// ticker := time.NewTicker(10 * time.Second) //debug
+	// ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second) //debug
 	defer ticker.Stop()
 	ctx := context.Background()
 

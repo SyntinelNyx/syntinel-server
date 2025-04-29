@@ -13,16 +13,14 @@ WITH inserted_telemetry AS (
     ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9
     )
-    RETURNING telemetry_id, telemetry_time
+    RETURNING telemetry_id
 )
 INSERT INTO telemetry_asset (
-    telemetry_time,
     telemetry_id,
     asset_id,
     root_account_id
 ) 
 SELECT 
-    telemetry_time,
     telemetry_id,
     $10 AS asset_id,
     $11 AS root_account_id
