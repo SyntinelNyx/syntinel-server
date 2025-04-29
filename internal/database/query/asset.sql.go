@@ -271,3 +271,46 @@ func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (Ge
 	)
 	return i, err
 }
+
+const getAssetsByHostnames = `-- name: GetAssetsByHostnames :many
+SELECT 
+  a.asset_id, 
+  a.ip_address, 
+  s.os,
+  a.root_account_id
+FROM assets a
+JOIN system_information s ON s.id = a.sysinfo_id
+WHERE s.hostname = ANY($1::text[])
+`
+
+type GetAssetsByHostnamesRow struct {
+	AssetID       pgtype.UUID
+	IpAddress     netip.Addr
+	Os            pgtype.Text
+	RootAccountID pgtype.UUID
+}
+
+func (q *Queries) GetAssetsByHostnames(ctx context.Context, hostnames []string) ([]GetAssetsByHostnamesRow, error) {
+	rows, err := q.db.Query(ctx, getAssetsByHostnames, hostnames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAssetsByHostnamesRow
+	for rows.Next() {
+		var i GetAssetsByHostnamesRow
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.IpAddress,
+			&i.Os,
+			&i.RootAccountID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

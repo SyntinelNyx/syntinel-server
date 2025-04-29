@@ -8,12 +8,13 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/flags"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUID, accountType string) error {
+func (h *Handler) LaunchScan(scannerName string, flags flags.FlagSet, assetsList []string, accountID pgtype.UUID, accountType string) error {
 	ctx := context.Background()
 
 	scanner, err := strategies.GetScanner(scannerName)
@@ -46,16 +47,7 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 		}
 	}
 
-	rootUUID := accountID
-	if accountType == "iam" {
-		rootUUID, err = h.queries.GetRootAccountIDForIAMUser(ctx, accountID)
-
-		if err != nil {
-			return fmt.Errorf("error retrieving root id from iamUser: %s", err)
-		}
-	}
-
-	assets, err := h.queries.GetAllAssets(ctx, rootUUID)
+	assets, err := h.queries.GetAssetsByHostnames(ctx, assetsList)
 
 	if err != nil || len(assets) == 0 {
 		return fmt.Errorf("error retrieving assets, no assets found")
@@ -63,8 +55,21 @@ func (h *Handler) LaunchScan(scannerName string, flags any, accountID pgtype.UUI
 
 	allVulnsSeen := make(map[string]vuln.Vulnerability)
 
+	var filepath string
+	for _, flag := range flags {
+		if flag.Label == "Filesystem" {
+			if path, ok := flag.Value.(string); ok {
+				filepath = path
+			}
+			break
+		}
+	}
+	if filepath == "" {
+		return fmt.Errorf("missing required 'Filesystem' flag")
+	}
+
 	for _, asset := range assets {
-		payload, err := scanner.CalculateCommand(asset.Os.String, "/", flags)
+		payload, err := scanner.CalculateCommand(asset.Os.String, filepath, flags)
 		if err != nil {
 			return fmt.Errorf("error calculating scanner command for %s: %v", scannerName, err)
 		}

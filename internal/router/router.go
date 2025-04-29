@@ -98,8 +98,11 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
+
 			subRouter.Post("/scan/launch", scanHandler.Launch)
 			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
+			subRouter.Get("/scan/retrieve-scan-parameters", scanHandler.RetrieveScanParameters)
+
 			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
 			subRouter.Post("/vuln/retrieve-data", vulnHandler.RetrieveData)
 		})
