@@ -28,60 +28,29 @@ SELECT
     $11 AS root_account_id
 FROM inserted_telemetry;
 
--- -- name: GetLatestTelemetryALL :many
--- SELECT 
---     a.asset_id,
---     a.ip_address,
---     si.hostname,
---     t.telemetry_time,
---     t.cpu_usage,
---     t.mem_used_percent,
---     t.disk_used_percent
--- FROM telemetry t
--- JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
--- JOIN assets a ON ta.asset_id = a.asset_id
--- JOIN system_information si ON a.sysinfo_id = si.id
--- WHERE t.telemetry_time = (
---     SELECT MAX(t2.telemetry_time)
---     FROM telemetry t2
---     JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
---     WHERE ta2.asset_id = ta.asset_id
--- )
--- ORDER BY a.ip_address;
-
--- name: GetLatestTelemetryUsage :one
-SELECT 
-    a.asset_id,
-    a.ip_address,
+-- name: GetAssetUsageByTime :many
+SELECT
     t.telemetry_time,
     t.cpu_usage,
+    t.mem_total,
+    t.mem_available,
+    t.mem_used,
     t.mem_used_percent,
+    t.disk_total,
+    t.disk_free,
+    t.disk_used,
     t.disk_used_percent
-FROM telemetry t
-JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
-JOIN assets a ON ta.asset_id = a.asset_id
-WHERE t.telemetry_time = (
-    SELECT MAX(t2.telemetry_time)
-    FROM telemetry t2
-    JOIN telemetry_asset ta2 ON t2.telemetry_id = ta2.telemetry_id
-    WHERE ta2.asset_id = ta.asset_id
-);
+FROM
+    telemetry_asset ta
+JOIN
+    telemetry t ON ta.telemetry_id = t.telemetry_id
+WHERE
+    ta.asset_id = $1  -- Replace $1 with the asset_id
+    AND ta.root_account_id = $2  -- Replace $2 with the root_account_id
+    AND t.telemetry_time > NOW() - INTERVAL '30 days'  -- Optional: filter by the past 30 days
+ORDER BY
+    t.telemetry_time ASC;
 
--- name: GetTelemetryByTime :one
-SELECT 
-    time_bucket($1 , t.telemetry_time) AS hour,
-    ta.asset_id,
-    a.ip_address,
-    AVG(t.cpu_usage) AS avg_cpu,
-    AVG(t.mem_used_percent) AS avg_mem,
-    AVG(t.disk_used_percent) AS avg_disk
-FROM telemetry t
-JOIN telemetry_asset ta ON t.telemetry_id = ta.telemetry_id
-JOIN assets a ON ta.asset_id = a.asset_id
-JOIN root_accounts ra ON ta.root_account_id = ra.account_id
-WHERE t.telemetry_time > NOW() - INTERVAL $2
-GROUP BY hour, ta.asset_id, a.ip_address
-ORDER BY hour DESC, ta.asset_id;
 
 -- name: GetAssetUptime :many
 WITH asset_uptime_diff AS (

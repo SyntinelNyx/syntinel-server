@@ -208,7 +208,6 @@ func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asse
 	return i, err
 }
 
-<<<<<<< HEAD
 const getAssetInfoById = `-- name: GetAssetInfoById :one
 SELECT
   a.asset_id,
@@ -306,7 +305,8 @@ func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (Ge
 		&i.SystemInfoCreatedAt,
 	)
 	return i, err
-=======
+}
+
 const getIPByAssetID = `-- name: GetIPByAssetID :one
 SELECT ip_address
 FROM assets
@@ -323,5 +323,4 @@ func (q *Queries) GetIPByAssetID(ctx context.Context, arg GetIPByAssetIDParams) 
 	var ip_address netip.Addr
 	err := row.Scan(&ip_address)
 	return ip_address, err
->>>>>>> f95921db1dca8605a7280d77a0370f5f2c38e62f
 }

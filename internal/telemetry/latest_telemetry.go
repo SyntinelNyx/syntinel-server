@@ -2,15 +2,11 @@ package telemetry
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
-	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
-	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,9 +21,16 @@ type SysInfoEntry struct {
 }
 
 type LatestUsageResponse struct {
-	CpuUsage          float64 `json:"cpuUsage"`
-	MemoryUsedPercent float64 `json:"memoryUsedPercent"`
-	DiskUsedPercent   float64 `json:"diskUsedPercent"`
+	TelemetryTime   pgtype.Timestamptz
+	CpuUsage        float64
+	MemTotal        int64
+	MemAvailable    int64
+	MemUsed         int64
+	MemUsedPercent  float64
+	DiskTotal       int64
+	DiskFree        int64
+	DiskUsed        int64
+	DiskUsedPercent float64
 }
 
 func (h *Handler) LatestUsage(w http.ResponseWriter, r *http.Request) {
@@ -77,63 +80,39 @@ func (h *Handler) LatestUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := query.GetIPByAssetIDParams{
-		AssetID:       assetID, // Convert UUID to string if needed
+	params := query.GetAssetUsageByTimeParams{
+		AssetID:       assetID,
 		RootAccountID: rootId,
 	}
-
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
+	sysinfo, err := h.queries.GetAssetUsageByTime(context.Background(), params)
 	if err != nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving telemetry usage", err)
 		return
 	}
 
-	var target string
+	parsedData := parseTelemetryData(sysinfo)
 
-	ip := net.ParseIP(agentip.String())
-	if ip == nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "invalid ip address", nil)
-	}
-	if ip.To4() != nil {
-		target = fmt.Sprintf("%s:50051", agentip)
-	} else {
-		target = fmt.Sprintf("[%s]:50051", agentip)
-	}
+	response.RespondWithJSON(w, http.StatusOK, parsedData)
+}
 
-	controlMessages := []*controlpb.ControlMessage{
-		{
-			Command: "sysinfo",
-		},
-	}
+func parseTelemetryData(data []query.GetAssetUsageByTimeRow) []LatestUsageResponse {
+	var parsedData []LatestUsageResponse
 
-	responses, err := commands.Command(target, controlMessages)
-	if err != nil {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Error restoring snapshot: %v", err)
-	}
-
-	if len(responses) == 0 {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "No response from agent", nil)
-		return
-	}
-	result := responses[0].GetResult()
-
-
-	var sysinfo SysInfoOutput
-	err = json.Unmarshal([]byte(result), &sysinfo)
-	if err != nil {
-		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to parse sysinfo response", err)
-		return
-	}
-
-	var UsageResponse []LatestUsageResponse
-	for _, telemetry := range sysinfo {
-		data := LatestUsageResponse {
-			CpuUsage: telemetry.CpuUsage,
-			MemoryUsedPercent: telemetry.MemoryUsedPercent,
-			DiskUsedPercent: telemetry.DiskUsedPercent,
+	for _, entry := range data {
+		parsedEntry := LatestUsageResponse{
+			TelemetryTime:   entry.TelemetryTime,
+			CpuUsage:        entry.CpuUsage,
+			MemTotal:        entry.MemTotal,
+			MemAvailable:    entry.MemAvailable,
+			MemUsed:         entry.MemUsed,
+			MemUsedPercent:  entry.MemUsedPercent,
+			DiskTotal:       entry.DiskTotal,
+			DiskFree:        entry.DiskFree,
+			DiskUsed:        entry.DiskUsed,
+			DiskUsedPercent: entry.DiskUsedPercent,
 		}
-		UsageResponse = append(UsageResponse, data)
+		parsedData = append(parsedData, parsedEntry)
 	}
 
-	response.RespondWithJSON(w, http.StatusOK, UsageResponse)
+	return parsedData
 }
