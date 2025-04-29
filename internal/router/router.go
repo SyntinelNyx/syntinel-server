@@ -105,7 +105,9 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/scan/retrieve-scan-parameters", scanHandler.RetrieveScanParameters)
 
 			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
-			subRouter.Post("/vuln/retrieve-data", vulnHandler.RetrieveData)
+			subRouter.Get("/vuln/retrieve-data/{vulnID}", vulnHandler.RetrieveData)
+			subRouter.Get("/vuln/retrieve-scan/{scanID}", vulnHandler.RetrieveScan)
+
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
