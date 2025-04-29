@@ -68,9 +68,13 @@ CREATE TABLE IF NOT EXISTS assets (
 
 CREATE TABLE IF NOT EXISTS actions (
   action_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  action_name TEXT NOT NULL,
   action_type VARCHAR(10) NOT NULL,
   action_payload TEXT NOT NULL,
+  action_note TEXT NOT NULL,
   root_account_id UUID NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
 

@@ -2,7 +2,6 @@ package asset
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -48,7 +47,7 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 	var assets []Asset
 	for _, asset := range row {
 		assets = append(assets, Asset{
-			AssetID:         fmt.Sprintf("%x-%x-%x-%x-%x", asset.AssetID.Bytes[0:4], asset.AssetID.Bytes[4:6], asset.AssetID.Bytes[6:8], asset.AssetID.Bytes[8:10], asset.AssetID.Bytes[10:16]),
+			AssetID:         response.UuidToString(asset.AssetID),
 			Hostname:        asset.Hostname.String,
 			Os:              asset.Os.String,
 			PlatformVersion: asset.PlatformVersion.String,
