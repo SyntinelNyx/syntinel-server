@@ -35,16 +35,16 @@ type Disk struct {
 
 func (h *Handler) TelemetryRunner() error {
 
-	// ticker := time.NewTicker(1 * time.Minute)
-	ticker := time.NewTicker(10 * time.Second) //debug
+	ticker := time.NewTicker(1 * time.Minute)
+	// ticker := time.NewTicker(10 * time.Second) //debug
 	defer ticker.Stop()
 	ctx := context.Background()
 
-	// Endless loop with ticker
+
 	for {
 		select {
 		case <-ticker.C:
-			logger.Info("Collecting telemetry data...")
+
 			// Get all assets to collect telemetry from
 			assets, err := h.queries.GetAllAssetIPs(ctx)
 			if err != nil {
@@ -53,12 +53,11 @@ func (h *Handler) TelemetryRunner() error {
 			}
 
 			for _, asset := range assets {
-				// Skip assets without IP
+
 				if asset.IpAddress.IsValid() == false {
 					continue
 				}
 
-				// Prepare control message for sysinfo command
 				controlMessages := []*controlpb.ControlMessage{
 					{
 						Command: "sysinfo",
@@ -77,18 +76,15 @@ func (h *Handler) TelemetryRunner() error {
 					target = fmt.Sprintf("[%s]:50051", asset.IpAddress)
 				}
 
-				// Execute sysinfo command on the asset
 				responses, err := commands.Command(target, controlMessages)
 				if err != nil {
 					logger.Error("Failed to execute sysinfo on %s: %v", asset.IpAddress.String(), err)
 					continue
 				}
 
-				// Parse the response
 				if len(responses) > 0 {
 					var sysinfo SysInfo
-					// var memory Memory
-					// var disk Disk
+
 					result := responses[0].GetResult()
 					err := json.Unmarshal([]byte(result), &sysinfo)
 					if err != nil {
@@ -111,14 +107,11 @@ func (h *Handler) TelemetryRunner() error {
 						RootAccountID:   asset.RootAccountID,
 					}
 
-					// Insert the telemetry data
 					err = h.queries.InsertTelemetryData(ctx, params)
 					if err != nil {
 						logger.Error("Failed to insert telemetry data for %s: %v", asset.IpAddress.String(), err)
 						continue
 					}
-
-					logger.Info("Telemetry data collected from %s", asset.IpAddress.String())
 				}
 			}
 		}
