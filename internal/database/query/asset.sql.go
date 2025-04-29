@@ -277,7 +277,8 @@ SELECT
   a.asset_id, 
   a.ip_address, 
   s.os,
-  a.root_account_id
+  a.root_account_id,
+  s.hostname
 FROM assets a
 JOIN system_information s ON s.id = a.sysinfo_id
 WHERE s.hostname = ANY($1::text[])
@@ -288,6 +289,7 @@ type GetAssetsByHostnamesRow struct {
 	IpAddress     netip.Addr
 	Os            pgtype.Text
 	RootAccountID pgtype.UUID
+	Hostname      pgtype.Text
 }
 
 func (q *Queries) GetAssetsByHostnames(ctx context.Context, hostnames []string) ([]GetAssetsByHostnamesRow, error) {
@@ -304,6 +306,7 @@ func (q *Queries) GetAssetsByHostnames(ctx context.Context, hostnames []string) 
 			&i.IpAddress,
 			&i.Os,
 			&i.RootAccountID,
+			&i.Hostname,
 		); err != nil {
 			return nil, err
 		}

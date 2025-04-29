@@ -82,6 +82,16 @@ func (q *Queries) CreateScanEntryRoot(ctx context.Context, arg CreateScanEntryRo
 	return scan_id, err
 }
 
+const removeScanEntry = `-- name: RemoveScanEntry :exec
+DELETE FROM scans
+WHERE scan_id = $1
+`
+
+func (q *Queries) RemoveScanEntry(ctx context.Context, scanID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, removeScanEntry, scanID)
+	return err
+}
+
 const retrieveScans = `-- name: RetrieveScans :many
 SELECT s.scan_id,
     ra.username AS root_account_username,
