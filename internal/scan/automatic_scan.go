@@ -1,17 +1,19 @@
 package scan
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/scan/strategies"
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/flags"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/spf13/viper"
 )
 
 var scheduler gocron.Scheduler
 
-func InitalizeScheduler(h *Handler) error {
+func (h *Handler) InitalizeScheduler() error {
 	if err := viper.ReadInConfig(); err != nil {
 		return fmt.Errorf("error reading config file: %s", err)
 	}
@@ -27,7 +29,7 @@ func InitalizeScheduler(h *Handler) error {
 	}
 
 	frequency := viper.GetString("scan.frequency")
-	if frequency != "" {
+	if frequency == "" {
 		return fmt.Errorf("error frequency undefined")
 	}
 
@@ -54,15 +56,31 @@ func InitalizeScheduler(h *Handler) error {
 		jobInterval = 1
 	}
 
-	scanner, err := strategies.GetScanner(defaultScanner)
+	// scanner, err := strategies.GetScanner(defaultScanner)
 	if err != nil {
 		return fmt.Errorf("error retrieving scanner: %s", err)
 	}
 
-	flags := scanner.DefaultFlags()
+	defaultFlags := flags.FlagSet{
+		{
+			Label:     "Filesystem",
+			InputType: "string",
+			Value:     "/",
+			Required:  true,
+		},
+	}
+
+	rootAccount, _ := h.queries.GetRootAccountByEmail(context.Background(), viper.GetString("scan.root_email"))
+
+	assets, _ := h.queries.GetAllAssetsMin(context.Background(), rootAccount.AccountID)
+
+	var assetList []string
+	for _, asset := range assets {
+		assetList = append(assetList, asset.Hostname.String)
+	}
 
 	job := gocron.DailyJob(jobInterval, startTime)
-	task := gocron.NewTask(h.LaunchScan, defaultScanner, flags)
+	task := gocron.NewTask(h.LaunchScan, defaultScanner, defaultFlags, assetList, rootAccount, "root")
 
 	_, err = scheduler.NewJob(
 		job,
@@ -73,16 +91,17 @@ func InitalizeScheduler(h *Handler) error {
 		return fmt.Errorf("error creating new job: %s", err)
 	}
 
+	logger.Info("Automatic Scan Scheduled, using Scanner %s %s at %s", defaultScanner, frequency, time.Format("3:04 PM"))
 	scheduler.Start()
 
 	return nil
 }
 
-func ShutdownScheduler() {
+func (h *Handler) ShutdownScheduler() {
 	if scheduler != nil {
 		scheduler.Shutdown()
-		fmt.Println("Scheduler stopped gracefully.")
+		logger.Info("Scheduler stopped gracefully.")
 	} else {
-		fmt.Println("Scheduler was not initialized.")
+		logger.Info("Scheduler was not initialized.")
 	}
 }

@@ -13,15 +13,16 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
-		"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
+	"github.com/SyntinelNyx/syntinel-server/internal/scan"
 	"github.com/SyntinelNyx/syntinel-server/internal/telemetry"
 )
 
-type Runner struct{
-	queries  *query.Queries
+type Runner struct {
+	queries *query.Queries
 }
 
 func main() {
@@ -86,6 +87,15 @@ func main() {
 		err := telemetryHandler.TelemetryRunner()
 		if err != nil {
 			logger.Error("Error running telemetry: %v", err)
+		}
+
+	}()
+	go func() {
+		scanHandler := scan.NewHandler(r.queries)
+		err = scanHandler.InitalizeScheduler()
+
+		if err != nil {
+			logger.Error("Error running scheduler: %v", err)
 		}
 	}()
 
