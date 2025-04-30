@@ -117,7 +117,7 @@ func (h *Handler) PermissionsMiddleware(next http.Handler) http.Handler {
 		effectivePerms := expandStructuredPermissions(basePerms)
 
 		if _, ok := effectivePerms[requiredPerm]; !ok {
-			response.RespondWithError(w, r, http.StatusForbidden, "Missing required permission: "+requiredPerm, nil)
+			response.RespondWithError(w, r, http.StatusForbidden, "Missing required permission", nil)
 			return
 		}
 
