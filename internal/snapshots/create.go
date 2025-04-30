@@ -6,9 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
-	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
@@ -22,27 +20,15 @@ type CreateSnapshotResponse struct {
 }
 
 func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	var rootID pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
-
-	account := auth.GetClaims(r.Context())
-	if account.AccountType != "root" {
-		rootID, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
-		if err != nil {
-			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
-			return
-		}
-	} else {
-		rootID = account.AccountID
-	}
 
 	assetIDStr := chi.URLParam(r, "assetID")
 	if assetIDStr == "" {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Missing asset ID", nil)
 		return
 	}
-	
+
 	uuid := pgtype.UUID{}
 	if err := uuid.Scan(assetIDStr); err != nil {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
@@ -50,12 +36,7 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	assetID = uuid
 
-	params := query.GetIPByAssetIDParams{
-		AssetID:       assetID,
-		RootAccountID: rootID,
-	}
-
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), assetID)
 	if err != nil {
 		logger.Error("Error retrieving agent IP: %v", err)
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
@@ -91,7 +72,7 @@ func (h *Handler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to create snapshot", err)
 	}
-	
+
 	for _, responder := range responses {
 		if responder.GetStatus() != "error" {
 			response.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Snapshot created successfully"})

@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
-	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/go-chi/chi/v5"
@@ -34,20 +32,9 @@ type ListAllSnapshotResponse struct {
 }
 
 func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
-	var rootId pgtype.UUID
+	// var rootId pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
-
-	account := auth.GetClaims(r.Context())
-	if account.AccountType != "root" {
-		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
-		if err != nil {
-			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
-			return
-		}
-	} else {
-		rootId = account.AccountID
-	}
 
 	assetIDStr := chi.URLParam(r, "assetID")
 	if assetIDStr == "" {
@@ -62,12 +49,7 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 	assetID = uuid
 
-	params := query.GetIPByAssetIDParams{
-		AssetID:       assetID,
-		RootAccountID: rootId,
-	}
-
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), assetID)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
 		return
@@ -107,7 +89,6 @@ func (h *Handler) ListSnapshots(w http.ResponseWriter, r *http.Request) {
 	if len(responses) > 0 {
 		result := responses[0].GetResult()
 
-	
 		var kopia KopiaOutput
 		err := json.Unmarshal([]byte(result), &kopia)
 		if err != nil {
