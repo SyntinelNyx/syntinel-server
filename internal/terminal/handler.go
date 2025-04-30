@@ -1,4 +1,4 @@
-package shell
+package terminal
 
 import (
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"

@@ -1,4 +1,4 @@
-package shell
+package terminal
 
 import (
 	"context"
@@ -16,16 +16,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ShellRequest struct {
+type TerminalRequest struct {
 	Command string `json:"command"`
 }
 
-type ShellResponse struct {
+type TerminalResponse struct {
 	Result string `json:"result"`
 }
 
-func (h *Handler) Shell(w http.ResponseWriter, r *http.Request) {
-	var shellRequest ShellRequest
+func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
+	var shellRequest TerminalRequest
 	var rootId pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
@@ -47,30 +47,12 @@ func (h *Handler) Shell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the UUID already has hyphens
-	if len(assetIDStr) == 36 && assetIDStr[8] == '-' && assetIDStr[13] == '-' && assetIDStr[18] == '-' && assetIDStr[23] == '-' {
-		// UUID already has the correct format
-		if err := assetID.Scan(assetIDStr); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else if len(assetIDStr) == 32 {
-		// UUID without hyphens, format it
-		uuidString := fmt.Sprintf("%s-%s-%s-%s-%s",
-			assetIDStr[0:8],
-			assetIDStr[8:12],
-			assetIDStr[12:16],
-			assetIDStr[16:20],
-			assetIDStr[20:])
-
-		if err := assetID.Scan(uuidString); err != nil {
-			response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
-			return
-		}
-	} else {
-		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", nil)
+	uuid := pgtype.UUID{}
+	if err := uuid.Scan(assetIDStr); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid AssetID format", fmt.Errorf("%v", err))
 		return
 	}
+	assetID = uuid
 
 	params := query.GetIPByAssetIDParams{
 		AssetID:       assetID, // Convert UUID to string if needed
@@ -118,7 +100,7 @@ func (h *Handler) Shell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Marshal the result into JSON
-	shellResponse := ShellResponse{
+	shellResponse := TerminalResponse{
 		Result: result,
 	}
 	responseJSON, err := json.Marshal(shellResponse)
@@ -127,8 +109,6 @@ func (h *Handler) Shell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write the JSON response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
+	response.RespondWithJSON(w, http.StatusOK, string(responseJSON))
+
 }
