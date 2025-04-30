@@ -170,6 +170,7 @@ type Scan struct {
 	ScannedByUser pgtype.UUID
 	ScannerName   string
 	ScanDate      pgtype.Timestamptz
+	Notes         pgtype.Text
 }
 
 type SystemInformation struct {

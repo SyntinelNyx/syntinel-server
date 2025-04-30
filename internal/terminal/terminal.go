@@ -7,9 +7,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
-	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
@@ -27,7 +25,6 @@ type TerminalResponse struct {
 
 func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
 	var terminalRequest TerminalRequest
-	var rootId pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
 
@@ -40,17 +37,6 @@ func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
 	if terminalRequest.Command == "" {
 		response.RespondWithError(w, r, http.StatusBadRequest, "Command cannot be empty", nil)
 		return
-	}
-
-	account := auth.GetClaims(r.Context())
-	if account.AccountType != "root" {
-		rootId, err = h.queries.GetRootAccountIDForIAMUser(context.Background(), account.AccountID)
-		if err != nil {
-			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to get associated root account for IAM account", err)
-			return
-		}
-	} else {
-		rootId = account.AccountID
 	}
 
 	assetIDStr := chi.URLParam(r, "assetID")
@@ -66,12 +52,7 @@ func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
 	}
 	assetID = uuid
 
-	params := query.GetIPByAssetIDParams{
-		AssetID:       assetID, // Convert UUID to string if needed
-		RootAccountID: rootId,
-	}
-
-	agentip, err := h.queries.GetIPByAssetID(context.Background(), params)
+	agentip, err := h.queries.GetIPByAssetID(context.Background(), assetID)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Error retrieving agent IP", err)
 		return
