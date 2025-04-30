@@ -14,12 +14,23 @@ type scanResponse struct {
 	ScanDate    string `json:"scanDate"`
 	ScannerName string `json:"scannerName"`
 	ScannedBy   string `json:"scannedBy"`
+	Notes       string `json:"notes"`
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
-	claims := auth.GetClaims(r.Context())
+	account := auth.GetClaims(r.Context())
 
-	scans, err := h.queries.RetrieveScans(r.Context(), claims.AccountID)
+	rootAccountID := account.AccountID
+	if account.AccountType == "iam" {
+		var err error
+		rootAccountID, err = h.queries.GetRootAccountIDAsIam(r.Context(), account.AccountID)
+
+		if err != nil {
+			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to associate IAM with Root Account", err)
+			return
+		}
+	}
+	scans, err := h.queries.RetrieveScans(r.Context(), rootAccountID)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to retrieve scans", err)
 		return
@@ -33,6 +44,7 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 			ScanDate:    scan.ScanDate.Time.Format(time.RFC3339),
 			ScannerName: scan.ScannerName,
 			ScannedBy:   scan.RootAccountUsername,
+			Notes:       scan.Notes.String,
 		}
 
 		scansList = append(scansList, resp)

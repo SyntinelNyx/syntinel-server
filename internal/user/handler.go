@@ -1,4 +1,4 @@
-package role
+package user
 
 import (
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"

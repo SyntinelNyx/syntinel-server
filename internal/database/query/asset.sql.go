@@ -15,41 +15,66 @@ import (
 const addAsset = `-- name: AddAsset :exec
 WITH inserted_sysinfo AS (
   INSERT INTO system_information (
-    hostname,
-    uptime,
-    boot_time,
-    procs,
-    os,
-    platform,
-    platform_family,
-    platform_version,
-    kernel_version,
-    kernel_arch,
-    virtualization_system,
-    virtualization_role,
-    host_id,
-    cpu_vendor_id,
-    cpu_cores,
-    cpu_model_name,
-    cpu_mhz,
-    cpu_cache_size,
-    memory,
-    disk
-  ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14,
-    $15, $16, $17, $18, $19, $20
-  )
+      hostname,
+      uptime,
+      boot_time,
+      procs,
+      os,
+      platform,
+      platform_family,
+      platform_version,
+      kernel_version,
+      kernel_arch,
+      virtualization_system,
+      virtualization_role,
+      host_id,
+      cpu_vendor_id,
+      cpu_cores,
+      cpu_model_name,
+      cpu_mhz,
+      cpu_cache_size,
+      memory,
+      disk
+    )
+  VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5,
+      $6,
+      $7,
+      $8,
+      $9,
+      $10,
+      $11,
+      $12,
+      $13,
+      $14,
+      $15,
+      $16,
+      $17,
+      $18,
+      $19,
+      $20
+    )
   RETURNING id
 )
 INSERT INTO assets (
-  asset_id,
-  ip_address,
-  sysinfo_id,
-  root_account_id
-) VALUES (
-  $21, $22, (SELECT id FROM inserted_sysinfo), $23
-)
+    asset_id,
+    ip_address,
+    sysinfo_id,
+    root_account_id
+  )
+VALUES (
+    $21,
+    $22,
+    (
+      SELECT id
+      FROM inserted_sysinfo
+    ),
+    $23
+  )
 `
 
 type AddAssetParams struct {
@@ -115,7 +140,7 @@ SELECT a.asset_id,
   a.ip_address,
   s.created_at
 FROM assets a
-JOIN system_information s ON a.sysinfo_id = s.id
+  JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1
 `
 
@@ -159,7 +184,7 @@ const getAllAssetsMin = `-- name: GetAllAssetsMin :many
 SELECT a.asset_id,
   s.hostname
 FROM assets a
-JOIN system_information s ON a.sysinfo_id = s.id
+  JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.root_account_id = $1
 `
 
@@ -188,27 +213,8 @@ func (q *Queries) GetAllAssetsMin(ctx context.Context, rootAccountID pgtype.UUID
 	return items, nil
 }
 
-const getAsset = `-- name: GetAsset :one
-SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
-WHERE root_account_id = $1
-`
-
-func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asset, error) {
-	row := q.db.QueryRow(ctx, getAsset, rootAccountID)
-	var i Asset
-	err := row.Scan(
-		&i.AssetID,
-		&i.IpAddress,
-		&i.SysinfoID,
-		&i.RootAccountID,
-		&i.RegisteredAt,
-	)
-	return i, err
-}
-
 const getAssetInfoById = `-- name: GetAssetInfoById :one
-SELECT
-  a.asset_id,
+SELECT a.asset_id,
   a.ip_address,
   a.sysinfo_id,
   a.root_account_id,
@@ -236,7 +242,7 @@ SELECT
   s.disk,
   s.created_at AS system_info_created_at
 FROM assets a
-JOIN system_information s ON a.sysinfo_id = s.id
+  JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.asset_id = $1
 `
 
@@ -303,6 +309,83 @@ func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (Ge
 		&i.SystemInfoCreatedAt,
 	)
 	return i, err
+}
+
+const getAssets = `-- name: GetAssets :many
+SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at
+FROM assets
+WHERE root_account_id = $1
+`
+
+func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
+	rows, err := q.db.Query(ctx, getAssets, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Asset
+	for rows.Next() {
+		var i Asset
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.IpAddress,
+			&i.SysinfoID,
+			&i.RootAccountID,
+			&i.RegisteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAssetsByHostnames = `-- name: GetAssetsByHostnames :many
+SELECT a.asset_id,
+  a.ip_address,
+  s.os,
+  a.root_account_id,
+  s.hostname
+FROM assets a
+  JOIN system_information s ON s.id = a.sysinfo_id
+WHERE s.hostname = ANY($1::text [])
+`
+
+type GetAssetsByHostnamesRow struct {
+	AssetID       pgtype.UUID
+	IpAddress     netip.Addr
+	Os            pgtype.Text
+	RootAccountID pgtype.UUID
+	Hostname      pgtype.Text
+}
+
+func (q *Queries) GetAssetsByHostnames(ctx context.Context, hostnames []string) ([]GetAssetsByHostnamesRow, error) {
+	rows, err := q.db.Query(ctx, getAssetsByHostnames, hostnames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAssetsByHostnamesRow
+	for rows.Next() {
+		var i GetAssetsByHostnamesRow
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.IpAddress,
+			&i.Os,
+			&i.RootAccountID,
+			&i.Hostname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getIPByAssetID = `-- name: GetIPByAssetID :one
