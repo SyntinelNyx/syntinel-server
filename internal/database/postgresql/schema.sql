@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS environments (
 
 CREATE TABLE IF NOT EXISTS environment_assets (
   environment_id UUID NOT NULL,
-  asset_id UUID NOT NULL,
+  asset_id UUID NOT NULL UNIQUE,
   PRIMARY KEY (environment_id, asset_id),
   FOREIGN KEY (environment_id) REFERENCES environments (environment_id),
   FOREIGN KEY (asset_id) REFERENCES assets (asset_id)
