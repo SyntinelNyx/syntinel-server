@@ -121,3 +121,13 @@ SELECT a.asset_id,
 FROM assets a
   JOIN system_information s ON a.sysinfo_id = s.id
 WHERE a.asset_id = $1;
+
+-- name: GetAssetsByHostnames :many
+SELECT a.asset_id,
+  a.ip_address,
+  s.os,
+  a.root_account_id,
+  s.hostname
+FROM assets a
+  JOIN system_information s ON s.id = a.sysinfo_id
+WHERE s.hostname = ANY(@hostnames::text []);
