@@ -19,6 +19,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/user"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 )
 
@@ -90,9 +91,11 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			scanHandler := scan.NewHandler(r.queries)
 			vulnHandler := vuln.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
+			userHandler := user.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
+			subRouter.Use(roleHandler.PermissionsMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
 			subRouter.Get("/assets/min", assetHandler.RetrieveMin)
@@ -102,13 +105,20 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Post("/action/create", actionHandler.Create)
 			subRouter.Post("/action/run", actionHandler.Run)
 
-			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Get("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Get("/role/retrieve-data/{roleID}", roleHandler.RetrieveData)
 			subRouter.Post("/role/create", roleHandler.Create)
+			subRouter.Post("/role/update", roleHandler.Update)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
 			subRouter.Post("/scan/launch", scanHandler.Launch)
 			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
 			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
 			subRouter.Post("/vuln/retrieve-data", vulnHandler.RetrieveData)
+
+			subRouter.Post("/user/create", userHandler.CreateUser)
+			subRouter.Get("/user/retrieve", userHandler.Retrieve)
+			subRouter.Post("/user/delete", userHandler.DeleteUser)
+			subRouter.Post("/user/update", userHandler.UpdateUser)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {

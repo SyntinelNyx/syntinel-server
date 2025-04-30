@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"log"
-
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 )
 
@@ -21,9 +19,19 @@ func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.queries.RemoveRole(r.Context(), request.RoleName)
+	inUse, err := h.queries.IsRoleInUse(r.Context(), request.RoleName)
 	if err != nil {
-		log.Printf("Error deleting role %s: %v", request.RoleName, err)
+		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to check roles", err)
+		return
+	}
+
+	if inUse {
+		response.RespondWithError(w, r, http.StatusConflict, "Cannot delete role currently in use", nil)
+		return
+	}
+
+	err = h.queries.RemoveRole(r.Context(), request.RoleName)
+	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to delete role", err)
 		return
 	}

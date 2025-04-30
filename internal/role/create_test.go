@@ -1,23 +1,24 @@
 package role
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-	"bytes"
-	"context"
 	"os"
+	"testing"
 
-	"github.com/joho/godotenv"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func setupTestDB(t *testing.T) (*Handler, *pgxpool.Pool) {
-  if os.Getenv("NONLOCAL_TESTS") != "" {
+	if os.Getenv("NONLOCAL_TESTS") != "" {
 		t.Skip("Skipping test meant for local environments.")
 	}
 
@@ -26,7 +27,7 @@ func setupTestDB(t *testing.T) (*Handler, *pgxpool.Pool) {
 	}
 
 	testDBURL := os.Getenv("TEST_DATABASE_URL")
-	
+
 	if testDBURL == "" {
 		t.Fatal("TEST_DATABASE_URL environment variable not set")
 	}
@@ -41,8 +42,12 @@ func setupTestDB(t *testing.T) (*Handler, *pgxpool.Pool) {
 }
 
 func cleanupTestDB(t *testing.T, conn *pgxpool.Pool) {
-	_, err := conn.Exec(context.Background(), "TRUNCATE TABLE roles CASCADE;")
-	require.NoError(t, err, "Failed to truncate roles table")
+	_, err := conn.Exec(context.Background(), "DROP TYPE VULNSTATE;")
+	require.NoError(t, err, "Failed to drop tables")
+	// _, err = conn.Exec(context.Background(), "TRUNCATE TABLE roles CASCADE;")
+	// require.NoError(t, err, "Failed to truncate roles table")
+	// _, err = conn.Exec(context.Background(), "TRUNCATE TABLE roles_permissions CASCADE;")
+	// require.NoError(t, err, "Failed to truncate roles_permissions table")
 }
 
 func TestCreateRole(t *testing.T) {
@@ -50,15 +55,13 @@ func TestCreateRole(t *testing.T) {
 	defer cleanupTestDB(t, conn)
 
 	jsonReq := CreateRequest{
-		Role:            "admin",
-		IsAdministrator: true,
-		ViewAssets:      true,
-		ManageAssets:    true,
-		ViewModules:     true,
-		CreateModules:   true,
-		ManageModules:   true,
-		ViewScans:       true,
-		StartScans:      true,
+		Role: "admin",
+		Permissions: []string{
+			"Assets.View",
+			"Assets.Manage",
+			"Scans.Create",
+			"UserManagement.Manage",
+		},
 	}
 
 	requestBody, err := json.Marshal(jsonReq)
@@ -69,12 +72,24 @@ func TestCreateRole(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.Create(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.JSONEq(t, `{"message": "Role Creation Successful"}`, rr.Body.String())
+	assert.JSONEq(t, `{"message": "Role created successfully"}`, rr.Body.String())
 
 	// Integration Test: Verify test_db is properly updated using EXISTS query
 	var exists bool
-	err = conn.QueryRow(context.Background(), "SELECT EXISTS (SELECT 1 FROM roles WHERE role_name = $1)", jsonReq.Role).Scan(&exists)
-	require.NoError(t, err, "Failed to execute query to check if role exists")
+	err = conn.QueryRow(context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM roles WHERE role_name = $1)", jsonReq.Role).Scan(&exists)
+	require.NoError(t, err, "Failed to query for role existence")
+	assert.True(t, exists, "Role should be present in the roles table")
 
-	assert.True(t, exists, "Role should be contained in the roles list")
+	// Integration Test: Verify test_db is has permissions
+	var permExists bool
+	err = conn.QueryRow(context.Background(), `
+		SELECT EXISTS (
+			SELECT 1 FROM roles_permissions rp
+			JOIN roles r ON rp.role_id = r.role_id
+			JOIN permissions_new p ON rp.permission_id = p.permission_id
+			WHERE r.role_name = $1 AND p.permission_name = $2
+		)`, jsonReq.Role, "Assets.View").Scan(&permExists)
+	require.NoError(t, err, "Failed to check assigned permission")
+	assert.True(t, permExists, "Permission 'Assets.View' should be assigned to the role")
 }
