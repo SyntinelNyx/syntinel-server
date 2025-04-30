@@ -14,3 +14,4 @@ redis_data
 *.rdb
 
 syntinel-server
+data/uploads
