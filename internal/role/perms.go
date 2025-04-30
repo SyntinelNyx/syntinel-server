@@ -15,21 +15,37 @@ var RoutePermissions = map[string]string{
 	"/assets/min":  "Assets.View",
 	"/assets/{id}": "Assets.View",
 
+	"/assets/create-snapshot/{assetID}": "Assets.Manage",
+	"/assets/snapshots/{assetID}":       "Assets.View",
+	"/assets/{assetID}/telemetry-usage": "Assets.View",
+	"/assets/{assetID}/terminal":        "Assets.Manage",
+
 	"/action/retrieve": "Actions.View",
 	"/action/create":   "Actions.Create",
 	"/action/run":      "Actions.Manage",
 
+	"/telemetry-uptime":    "Assets.View",
+	"/telemetry-usage-all": "Assets.View",
+
 	"/role/retrieve":               "RoleManagement.View",
 	"/role/retrieve-data/{roleID}": "RoleManagement.View",
+	"/role/create":                 "RoleManagement.Manage",
+	"/role/update":                 "RoleManagement.Manage",
+	"/role/delete":                 "RoleManagement.Manage",
 
-	"/scan/launch":   "Scans.Create",
-	"/scan/retrieve": "Scans.View",
+	"/scan/launch":                   "Scans.Create",
+	"/scan/update-notes":             "Scans.Manage",
+	"/scan/retrieve":                 "Scans.View",
+	"/scan/retrieve-scan-parameters": "Scans.Manage",
 
-	"/vuln/retrieve":      "Vulnerabilities.View",
-	"/vuln/retrieve-data": "Vulnerabilities.View",
+	"/vuln/retrieve":               "Vulnerabilities.View",
+	"/vuln/retrieve-data/{vulnID}": "Vulnerabilities.View",
+	"/vuln/retrieve-scan/{scanID}": "Vulnerabilities.View",
 
-	"/user/retrieve": "UserManagement.View",
 	"/user/create":   "UserManagement.Create",
+	"/user/retrieve": "UserManagement.View",
+	"/user/delete":   "UserManagement.Manage",
+	"/user/update":   "UserManagement.Manage",
 }
 
 var permissionLevels = map[string]int{
