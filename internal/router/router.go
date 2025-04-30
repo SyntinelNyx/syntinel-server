@@ -19,7 +19,9 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/telemetry"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
+	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
@@ -90,6 +92,8 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			scanHandler := scan.NewHandler(r.queries)
 			vulnHandler := vuln.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
+			snapshotsHandler := snapshots.NewHandler(r.queries)
+			telemetryHandler := telemetry.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
@@ -97,10 +101,18 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/assets", assetHandler.Retrieve)
 			subRouter.Get("/assets/min", assetHandler.RetrieveMin)
 			subRouter.Get("/assets/{id}", assetHandler.RetrieveData)
+			subRouter.Post("/assets/create-snapshot/{assetID}", snapshotsHandler.CreateSnapshot)
+			subRouter.Get("/assets/snapshots/{assetID}", snapshotsHandler.ListSnapshots)
+
+			
 
 			subRouter.Get("/action/retrieve", actionHandler.Retrieve)
 			subRouter.Post("/action/create", actionHandler.Create)
 			subRouter.Post("/action/run", actionHandler.Run)
+			subRouter.Get("/assets/{assetID}/telemetry-usage", telemetryHandler.LatestUsage)
+
+			subRouter.Get("/telemetry-uptime", telemetryHandler.Uptime)
+			subRouter.Get("/telemetry-usage-all", telemetryHandler.LatestUsageAll)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
