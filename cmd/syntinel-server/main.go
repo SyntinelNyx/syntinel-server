@@ -13,10 +13,16 @@ import (
 
 	"github.com/SyntinelNyx/syntinel-server/internal/config"
 	"github.com/SyntinelNyx/syntinel-server/internal/database"
+		"github.com/SyntinelNyx/syntinel-server/internal/database/query"
 	"github.com/SyntinelNyx/syntinel-server/internal/grpc"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/router"
+	"github.com/SyntinelNyx/syntinel-server/internal/telemetry"
 )
+
+type Runner struct{
+	queries  *query.Queries
+}
 
 func main() {
 	flags := config.DeclareFlags()
@@ -68,6 +74,18 @@ func main() {
 
 		if err != nil && err != http.ErrServerClosed {
 			logger.Fatal("Unexpected server shutdown error: %v", err)
+		}
+	}()
+
+	r := Runner{
+		queries: queries,
+	}
+
+	go func() {
+		telemetryHandler := telemetry.NewHandler(r.queries)
+		err := telemetryHandler.TelemetryRunner()
+		if err != nil {
+			logger.Error("Error running telemetry: %v", err)
 		}
 	}()
 

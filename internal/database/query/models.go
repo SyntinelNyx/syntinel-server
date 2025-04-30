@@ -197,6 +197,26 @@ type SystemInformation struct {
 	CreatedAt            pgtype.Timestamptz
 }
 
+type Telemetry struct {
+	TelemetryID     pgtype.UUID
+	TelemetryTime   pgtype.Timestamptz
+	CpuUsage        float64
+	MemTotal        int64
+	MemAvailable    int64
+	MemUsed         int64
+	MemUsedPercent  float64
+	DiskTotal       int64
+	DiskFree        int64
+	DiskUsed        int64
+	DiskUsedPercent float64
+}
+
+type TelemetryAsset struct {
+	TelemetryID   pgtype.UUID
+	AssetID       pgtype.UUID
+	RootAccountID pgtype.UUID
+}
+
 type VulnerabilityDatum struct {
 	VulnerabilityDataID      pgtype.UUID
 	VulnerabilityID          string
