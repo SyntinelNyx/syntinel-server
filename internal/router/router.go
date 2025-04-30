@@ -14,6 +14,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/asset"
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/environment"
 	"github.com/SyntinelNyx/syntinel-server/internal/limiter"
 	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
@@ -98,6 +99,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			telemetryHandler := telemetry.NewHandler(r.queries)
 			terminal := terminal.NewHandler(r.queries)
 			userHandler := user.NewHandler(r.queries)
+			envHandler := environment.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
@@ -112,12 +114,16 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/action/retrieve", actionHandler.Retrieve)
 			subRouter.Post("/action/create", actionHandler.Create)
 			subRouter.Post("/action/run", actionHandler.Run)
+
+			subRouter.Get("/env/retrieve", envHandler.Retrieve)
+			subRouter.Post("/env/create", envHandler.Create)
+			subRouter.Post("/env/add-asset", envHandler.AddAsset)
+
+			subRouter.Post("/assets/{assetID}/terminal", terminal.Terminal)
 			subRouter.Get("/assets/{assetID}/telemetry-usage", telemetryHandler.LatestUsage)
 
 			subRouter.Get("/telemetry-uptime", telemetryHandler.Uptime)
 			subRouter.Get("/telemetry-usage-all", telemetryHandler.LatestUsageAll)
-
-			subRouter.Post("/assets/{assetID}/terminal", terminal.Terminal)
 
 			subRouter.Get("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Get("/role/retrieve-data/{roleID}", roleHandler.RetrieveData)
