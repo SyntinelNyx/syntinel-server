@@ -139,3 +139,11 @@ GROUP BY
   hm.bucket_time
 ORDER BY
   hm.bucket_time DESC;
+
+-- name: GetAllAssetIPs :many
+SELECT 
+  asset_id,
+  ip_address,
+  root_account_id
+FROM assets
+ORDER BY root_account_id, asset_id;

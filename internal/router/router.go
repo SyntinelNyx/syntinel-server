@@ -117,10 +117,16 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
+
 			subRouter.Post("/scan/launch", scanHandler.Launch)
+			subRouter.Post("/scan/update-notes", scanHandler.UpdateNotes)
 			subRouter.Get("/scan/retrieve", scanHandler.Retrieve)
+			subRouter.Get("/scan/retrieve-scan-parameters", scanHandler.RetrieveScanParameters)
+
 			subRouter.Get("/vuln/retrieve", vulnHandler.Retrieve)
-			subRouter.Post("/vuln/retrieve-data", vulnHandler.RetrieveData)
+			subRouter.Get("/vuln/retrieve-data/{vulnID}", vulnHandler.RetrieveData)
+			subRouter.Get("/vuln/retrieve-scan/{scanID}", vulnHandler.RetrieveScan)
+
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {

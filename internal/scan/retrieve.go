@@ -14,6 +14,7 @@ type scanResponse struct {
 	ScanDate    string `json:"scanDate"`
 	ScannerName string `json:"scannerName"`
 	ScannedBy   string `json:"scannedBy"`
+	Notes       string `json:"notes"`
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +34,7 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 			ScanDate:    scan.ScanDate.Time.Format(time.RFC3339),
 			ScannerName: scan.ScannerName,
 			ScannedBy:   scan.RootAccountUsername,
+			Notes:       scan.Notes.String,
 		}
 
 		scansList = append(scansList, resp)

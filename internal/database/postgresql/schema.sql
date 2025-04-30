@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS scans (
   scanned_by_user UUID,
   scanner_name VARCHAR(255) NOT NULL,
   scan_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
   PRIMARY KEY (scan_id),
   FOREIGN KEY (root_account_id) REFERENCES root_accounts (account_id)
 );
