@@ -10,6 +10,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/commands"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
+	"github.com/SyntinelNyx/syntinel-server/internal/logger"
 	"github.com/SyntinelNyx/syntinel-server/internal/proto/controlpb"
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/go-chi/chi/v5"
@@ -25,10 +26,21 @@ type TerminalResponse struct {
 }
 
 func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
-	var shellRequest TerminalRequest
+	var terminalRequest TerminalRequest
 	var rootId pgtype.UUID
 	var assetID pgtype.UUID
 	var err error
+
+	if err := json.NewDecoder(r.Body).Decode(&terminalRequest); err != nil {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	// Check if command is empty
+	if terminalRequest.Command == "" {
+		response.RespondWithError(w, r, http.StatusBadRequest, "Command cannot be empty", nil)
+		return
+	}
 
 	account := auth.GetClaims(r.Context())
 	if account.AccountType != "root" {
@@ -80,12 +92,13 @@ func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
 	controlMessages := []*controlpb.ControlMessage{
 		{
 			Command: "exec",
-			Payload: shellRequest.Command,
+			Payload: terminalRequest.Command,
 		},
 	}
 
 	responses, err := commands.Command(target, controlMessages)
 	if err != nil {
+		logger.Error("Error sending command to gRPC agent: %s", err)
 		response.RespondWithError(w, r, http.StatusBadRequest, "Error executing command: %v", err)
 		return
 	}
@@ -100,10 +113,10 @@ func (h *Handler) Terminal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Marshal the result into JSON
-	shellResponse := TerminalResponse{
+	terminalResponse := TerminalResponse{
 		Result: result,
 	}
-	responseJSON, err := json.Marshal(shellResponse)
+	responseJSON, err := json.Marshal(terminalResponse)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to marshal response", err)
 		return
