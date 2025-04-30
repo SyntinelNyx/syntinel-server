@@ -35,8 +35,8 @@ type Disk struct {
 
 func (h *Handler) TelemetryRunner() error {
 
-	ticker := time.NewTicker(1 * time.Minute)
-	// ticker := time.NewTicker(10 * time.Second) //debug
+	// ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second) //debug
 	defer ticker.Stop()
 	ctx := context.Background()
 
@@ -75,6 +75,7 @@ func (h *Handler) TelemetryRunner() error {
 				} else {
 					target = fmt.Sprintf("[%s]:50051", asset.IpAddress)
 				}
+				logger.Info("Collecting telemetry from %s", target)
 
 				responses, err := commands.Command(target, controlMessages)
 				if err != nil {
