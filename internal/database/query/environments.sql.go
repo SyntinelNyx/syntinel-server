@@ -29,28 +29,28 @@ func (q *Queries) AddAssetToEnvironment(ctx context.Context, arg AddAssetToEnvir
 }
 
 const getAssetsByEnvironmentID = `-- name: GetAssetsByEnvironmentID :many
-SELECT a.asset_id, a.ip_address, a.sysinfo_id, a.root_account_id, a.registered_at
+SELECT a.asset_id, s.hostname
 FROM environment_assets ea
 JOIN assets a ON ea.asset_id = a.asset_id
+JOIN system_information s ON a.sysinfo_id = s.id
 WHERE ea.environment_id = $1
 `
 
-func (q *Queries) GetAssetsByEnvironmentID(ctx context.Context, environmentID pgtype.UUID) ([]Asset, error) {
+type GetAssetsByEnvironmentIDRow struct {
+	AssetID  pgtype.UUID
+	Hostname pgtype.Text
+}
+
+func (q *Queries) GetAssetsByEnvironmentID(ctx context.Context, environmentID pgtype.UUID) ([]GetAssetsByEnvironmentIDRow, error) {
 	rows, err := q.db.Query(ctx, getAssetsByEnvironmentID, environmentID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Asset
+	var items []GetAssetsByEnvironmentIDRow
 	for rows.Next() {
-		var i Asset
-		if err := rows.Scan(
-			&i.AssetID,
-			&i.IpAddress,
-			&i.SysinfoID,
-			&i.RootAccountID,
-			&i.RegisteredAt,
-		); err != nil {
+		var i GetAssetsByEnvironmentIDRow
+		if err := rows.Scan(&i.AssetID, &i.Hostname); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -64,13 +64,15 @@ func (q *Queries) GetAssetsByEnvironmentID(ctx context.Context, environmentID pg
 const getEnvironmentList = `-- name: GetEnvironmentList :many
 WITH RECURSIVE ordered_environments AS (
   SELECT
-    environment_id,
-    environment_name,
-    prev_env_id,
-    next_env_id,
+    e.environment_id,
+    e.environment_name,
+    e.prev_env_id,
+    e.next_env_id,
+    e.root_account_id,
     1 AS level
-  FROM environments
-  WHERE prev_env_id IS NULL
+  FROM environments e
+  WHERE e.prev_env_id IS NULL
+    AND e.root_account_id = $1
 
   UNION ALL
 
@@ -79,9 +81,12 @@ WITH RECURSIVE ordered_environments AS (
     e.environment_name,
     e.prev_env_id,
     e.next_env_id,
+    e.root_account_id,
     oe.level + 1
   FROM environments e
-  INNER JOIN ordered_environments oe ON e.environment_id = oe.next_env_id
+  INNER JOIN ordered_environments oe
+    ON e.environment_id = oe.next_env_id
+   AND e.root_account_id = oe.root_account_id
 )
 SELECT 
   environment_id,
@@ -101,8 +106,8 @@ type GetEnvironmentListRow struct {
 	Level           int32
 }
 
-func (q *Queries) GetEnvironmentList(ctx context.Context) ([]GetEnvironmentListRow, error) {
-	rows, err := q.db.Query(ctx, getEnvironmentList)
+func (q *Queries) GetEnvironmentList(ctx context.Context, rootAccountID pgtype.UUID) ([]GetEnvironmentListRow, error) {
+	rows, err := q.db.Query(ctx, getEnvironmentList, rootAccountID)
 	if err != nil {
 		return nil, err
 	}
