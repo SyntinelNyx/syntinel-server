@@ -19,10 +19,11 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
 	"github.com/SyntinelNyx/syntinel-server/internal/role"
 	"github.com/SyntinelNyx/syntinel-server/internal/scan"
+	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 	"github.com/SyntinelNyx/syntinel-server/internal/telemetry"
 	"github.com/SyntinelNyx/syntinel-server/internal/terminal"
+	"github.com/SyntinelNyx/syntinel-server/internal/user"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
-	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
@@ -96,9 +97,11 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			snapshotsHandler := snapshots.NewHandler(r.queries)
 			telemetryHandler := telemetry.NewHandler(r.queries)
 			terminal := terminal.NewHandler(r.queries)
+			userHandler := user.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
+			subRouter.Use(roleHandler.PermissionsMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
 			subRouter.Get("/assets/min", assetHandler.RetrieveMin)
@@ -116,8 +119,10 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Post("/assets/{assetID}/terminal", terminal.Terminal)
 
-			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Get("/role/retrieve", roleHandler.Retrieve)
+			subRouter.Get("/role/retrieve-data/{roleID}", roleHandler.RetrieveData)
 			subRouter.Post("/role/create", roleHandler.Create)
+			subRouter.Post("/role/update", roleHandler.Update)
 			subRouter.Post("/role/delete", roleHandler.DeleteRole)
 
 			subRouter.Post("/scan/launch", scanHandler.Launch)
@@ -129,6 +134,10 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/vuln/retrieve-data/{vulnID}", vulnHandler.RetrieveData)
 			subRouter.Get("/vuln/retrieve-scan/{scanID}", vulnHandler.RetrieveScan)
 
+			subRouter.Post("/user/create", userHandler.CreateUser)
+			subRouter.Get("/user/retrieve", userHandler.Retrieve)
+			subRouter.Post("/user/delete", userHandler.DeleteUser)
+			subRouter.Post("/user/update", userHandler.UpdateUser)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {

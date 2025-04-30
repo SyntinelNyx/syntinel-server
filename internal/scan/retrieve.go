@@ -18,9 +18,19 @@ type scanResponse struct {
 }
 
 func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
-	claims := auth.GetClaims(r.Context())
+	account := auth.GetClaims(r.Context())
 
-	scans, err := h.queries.RetrieveScans(r.Context(), claims.AccountID)
+	rootAccountID := account.AccountID
+	if account.AccountType == "iam" {
+		var err error
+		rootAccountID, err = h.queries.GetRootAccountIDAsIam(r.Context(), account.AccountID)
+
+		if err != nil {
+			response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to associate IAM with Root Account", err)
+			return
+		}
+	}
+	scans, err := h.queries.RetrieveScans(r.Context(), rootAccountID)
 	if err != nil {
 		response.RespondWithError(w, r, http.StatusInternalServerError, "Failed to retrieve scans", err)
 		return
