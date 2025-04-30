@@ -74,3 +74,10 @@ update_role AS (
     WHERE iam_account_id = $1
 )
 SELECT 1;
+
+-- name: ResetPassword :exec
+UPDATE iam_accounts
+SET password_hash = $2,
+    updated_at = NOW()
+WHERE email = $1
+    AND is_deleted = FALSE;

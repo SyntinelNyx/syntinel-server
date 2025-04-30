@@ -138,6 +138,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Get("/user/retrieve", userHandler.Retrieve)
 			subRouter.Post("/user/delete", userHandler.DeleteUser)
 			subRouter.Post("/user/update", userHandler.UpdateUser)
+			subRouter.Post("/user/send-reset-link", userHandler.ResetPassword)
 		})
 
 		apiRouter.Group(func(subRouter chi.Router) {
