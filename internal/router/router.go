@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/action"
 	"github.com/SyntinelNyx/syntinel-server/internal/asset"
 	"github.com/SyntinelNyx/syntinel-server/internal/auth"
 	"github.com/SyntinelNyx/syntinel-server/internal/database/query"
@@ -20,6 +21,7 @@ import (
 	"github.com/SyntinelNyx/syntinel-server/internal/scan"
 	"github.com/SyntinelNyx/syntinel-server/internal/telemetry"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
+	"github.com/SyntinelNyx/syntinel-server/internal/snapshots"
 )
 
 type Router struct {
@@ -86,16 +88,27 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			roleHandler := role.NewHandler(r.queries)
 			authHandler := auth.NewHandler(r.queries)
+			actionHandler := action.NewHandler(r.queries)
 			scanHandler := scan.NewHandler(r.queries)
 			vulnHandler := vuln.NewHandler(r.queries)
 			assetHandler := asset.NewHandler(r.queries)
+			snapshotsHandler := snapshots.NewHandler(r.queries)
 			telemetryHandler := telemetry.NewHandler(r.queries)
 
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
 			subRouter.Get("/assets", assetHandler.Retrieve)
+			subRouter.Get("/assets/min", assetHandler.RetrieveMin)
 			subRouter.Get("/assets/{id}", assetHandler.RetrieveData)
+			subRouter.Post("/assets/create-snapshot/{assetID}", snapshotsHandler.CreateSnapshot)
+			subRouter.Get("/assets/snapshots/{assetID}", snapshotsHandler.ListSnapshots)
+
+			
+
+			subRouter.Get("/action/retrieve", actionHandler.Retrieve)
+			subRouter.Post("/action/create", actionHandler.Create)
+			subRouter.Post("/action/run", actionHandler.Run)
 			subRouter.Get("/assets/{assetID}/telemetry-usage", telemetryHandler.LatestUsage)
 
 			subRouter.Get("/telemetry-uptime", telemetryHandler.Uptime)
@@ -114,9 +127,11 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 			subRouter.Use(r.rateLimiter.Middleware(rate.Every(1*time.Second), 10))
 
 			authHandler := auth.NewHandler(r.queries)
+
 			subRouter.Use(authHandler.JWTMiddleware)
 			subRouter.Use(authHandler.CSRFMiddleware)
 
+			subRouter.Post("/auth/logout", authHandler.Logout)
 			subRouter.Get("/auth/validate", func(w http.ResponseWriter, r *http.Request) {
 				account := auth.GetClaims(r.Context())
 				val, err := account.AccountID.Value()
@@ -127,7 +142,6 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 				response.RespondWithJSON(w, http.StatusOK,
 					map[string]string{"accountId": val.(string), "accountType": account.AccountType, "accountUser": account.AccountUser})
 			})
-			subRouter.Post("/auth/logout", authHandler.Logout)
 		})
 	})
 

@@ -58,9 +58,13 @@ func (ns NullVulnstate) Value() (driver.Value, error) {
 
 type Action struct {
 	ActionID      pgtype.UUID
+	ActionName    string
 	ActionType    string
 	ActionPayload string
+	ActionNote    string
 	RootAccountID pgtype.UUID
+	CreatedBy     string
+	CreatedAt     pgtype.Timestamptz
 }
 
 type Asset struct {
