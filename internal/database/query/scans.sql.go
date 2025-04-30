@@ -82,15 +82,27 @@ func (q *Queries) CreateScanEntryRoot(ctx context.Context, arg CreateScanEntryRo
 	return scan_id, err
 }
 
+const removeScanEntry = `-- name: RemoveScanEntry :exec
+DELETE FROM scans
+WHERE scan_id = $1
+`
+
+func (q *Queries) RemoveScanEntry(ctx context.Context, scanID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, removeScanEntry, scanID)
+	return err
+}
+
 const retrieveScans = `-- name: RetrieveScans :many
 SELECT s.scan_id,
     ra.username AS root_account_username,
     s.root_account_id,
     s.scanner_name,
-    s.scan_date
+    s.scan_date,
+    s.notes
 FROM scans s
     JOIN root_accounts ra ON s.root_account_id = ra.account_id
 WHERE root_account_id = $1
+ORDER BY s.scan_date DESC
 `
 
 type RetrieveScansRow struct {
@@ -99,6 +111,7 @@ type RetrieveScansRow struct {
 	RootAccountID       pgtype.UUID
 	ScannerName         string
 	ScanDate            pgtype.Timestamptz
+	Notes               pgtype.Text
 }
 
 func (q *Queries) RetrieveScans(ctx context.Context, rootAccountID pgtype.UUID) ([]RetrieveScansRow, error) {
@@ -116,6 +129,7 @@ func (q *Queries) RetrieveScans(ctx context.Context, rootAccountID pgtype.UUID) 
 			&i.RootAccountID,
 			&i.ScannerName,
 			&i.ScanDate,
+			&i.Notes,
 		); err != nil {
 			return nil, err
 		}
@@ -125,4 +139,20 @@ func (q *Queries) RetrieveScans(ctx context.Context, rootAccountID pgtype.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateScanNotes = `-- name: UpdateScanNotes :exec
+UPDATE scans
+SET notes = $1
+WHERE scan_id = $2
+`
+
+type UpdateScanNotesParams struct {
+	Notes  pgtype.Text
+	ScanID pgtype.UUID
+}
+
+func (q *Queries) UpdateScanNotes(ctx context.Context, arg UpdateScanNotesParams) error {
+	_, err := q.db.Exec(ctx, updateScanNotes, arg.Notes, arg.ScanID)
+	return err
 }

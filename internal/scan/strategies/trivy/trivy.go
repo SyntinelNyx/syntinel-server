@@ -6,17 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SyntinelNyx/syntinel-server/internal/scan/flags"
 	base "github.com/SyntinelNyx/syntinel-server/internal/scan/strategies/base"
 	"github.com/SyntinelNyx/syntinel-server/internal/vuln"
 )
 
 type TrivyScanner struct {
 	base.BaseScanner
-}
-
-type TrivyFlags struct {
-	Severity      string
-	IgnoreUnfixed bool
 }
 
 type TrivyOutput struct {
@@ -46,14 +42,36 @@ func (t *TrivyScanner) Name() string {
 	return t.BaseScanner.ScannerName
 }
 
-func (t *TrivyScanner) CalculateCommand(OS string, filePath string, flags interface{}) (string, error) {
+func (t *TrivyScanner) CalculateCommand(OS string, filePath string, flags flags.FlagSet) (string, error) {
 	return t.BaseScanner.CalculateCommand(OS, filePath, flags, t)
 }
 
-func (t *TrivyScanner) DefaultFlags() interface{} {
-	return TrivyFlags{
-		Severity:      "CRITICAL,HIGH",
-		IgnoreUnfixed: false,
+func (t *TrivyScanner) DefaultFlags() flags.FlagSet {
+	return flags.FlagSet{
+		{
+			Label:     "Severity",
+			InputType: "string",
+			Value:     "HIGH,CRITICAL",
+			Required:  false,
+		},
+		{
+			Label:     "IgnoreUnfixed",
+			InputType: "boolean",
+			Value:     false,
+			Required:  false,
+		},
+		{
+			Label:     "SkipFiles",
+			InputType: "strings",
+			Value:     []string{"./file.js", "./docs/**/*.md"},
+			Required:  false,
+		},
+		{
+			Label:     "SkipDirectory",
+			InputType: "strings",
+			Value:     []string{"/docs/", "/testfiles/*"},
+			Required:  false,
+		},
 	}
 }
 
@@ -136,20 +154,57 @@ func (t *TrivyScanner) ParseResults(jsonOutput string) ([]vuln.Vulnerability, er
 }
 
 func (t *TrivyScanner) PayloadForLinux() (string, error) {
-	flags, isTrivyFlags := t.Flags.(TrivyFlags)
-
-	if !isTrivyFlags {
-		return "", fmt.Errorf("invalid flags for scanner %s", t.Name())
-	}
-
 	payload := fmt.Sprintf("trivy fs %s -f json --scanners vuln", t.FilePath)
 
-	if flags.Severity != "" {
-		payload += " --severity " + flags.Severity
-	}
+	for _, flag := range t.Flags {
+		label := flag.Label
+		inputType := flag.InputType
 
-	if flags.IgnoreUnfixed {
-		payload += " --ignore-unfixed"
+		switch label {
+		case "Severity":
+			if inputType != "string" {
+				continue
+			}
+			strVal, ok := flag.Value.(string)
+			if !ok || strVal == "" {
+				continue
+			}
+			payload += " --severity " + strVal
+
+		case "IgnoreUnfixed":
+			if inputType != "bool" {
+				continue
+			}
+			boolVal, ok := flag.Value.(bool)
+			if !ok || !boolVal {
+				continue
+			}
+			payload += " --ignore-unfixed"
+
+		case "SkipFiles":
+			if inputType != "strings" {
+				continue
+			}
+			arrVal, ok := flag.Value.([]string)
+			if !ok || len(arrVal) == 0 {
+				continue
+			}
+			for _, file := range arrVal {
+				payload += " --skip-files " + file
+			}
+
+		case "SkipDirectory":
+			if inputType != "strings" {
+				continue
+			}
+			arrVal, ok := flag.Value.([]string)
+			if !ok || len(arrVal) == 0 {
+				continue
+			}
+			for _, dir := range arrVal {
+				payload += " --skip-dir " + dir
+			}
+		}
 	}
 
 	return payload, nil

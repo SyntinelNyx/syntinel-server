@@ -170,6 +170,7 @@ type Scan struct {
 	ScannedByUser pgtype.UUID
 	ScannerName   string
 	ScanDate      pgtype.Timestamptz
+	Notes         pgtype.Text
 }
 
 type SystemInformation struct {
@@ -199,7 +200,7 @@ type SystemInformation struct {
 
 type Telemetry struct {
 	TelemetryID     pgtype.UUID
-	ScanTime        pgtype.Timestamptz
+	TelemetryTime   pgtype.Timestamptz
 	CpuUsage        float64
 	MemTotal        int64
 	MemAvailable    int64
