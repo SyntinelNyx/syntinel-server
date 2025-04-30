@@ -188,24 +188,6 @@ func (q *Queries) GetAllAssetsMin(ctx context.Context, rootAccountID pgtype.UUID
 	return items, nil
 }
 
-const getAsset = `-- name: GetAsset :one
-SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
-WHERE root_account_id = $1
-`
-
-func (q *Queries) GetAsset(ctx context.Context, rootAccountID pgtype.UUID) (Asset, error) {
-	row := q.db.QueryRow(ctx, getAsset, rootAccountID)
-	var i Asset
-	err := row.Scan(
-		&i.AssetID,
-		&i.IpAddress,
-		&i.SysinfoID,
-		&i.RootAccountID,
-		&i.RegisteredAt,
-	)
-	return i, err
-}
-
 const getAssetInfoById = `-- name: GetAssetInfoById :one
 SELECT
   a.asset_id,
@@ -303,6 +285,37 @@ func (q *Queries) GetAssetInfoById(ctx context.Context, assetID pgtype.UUID) (Ge
 		&i.SystemInfoCreatedAt,
 	)
 	return i, err
+}
+
+const getAssets = `-- name: GetAssets :many
+SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at FROM assets
+WHERE root_account_id = $1
+`
+
+func (q *Queries) GetAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
+	rows, err := q.db.Query(ctx, getAssets, rootAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Asset
+	for rows.Next() {
+		var i Asset
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.IpAddress,
+			&i.SysinfoID,
+			&i.RootAccountID,
+			&i.RegisteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getIPByAssetID = `-- name: GetIPByAssetID :one

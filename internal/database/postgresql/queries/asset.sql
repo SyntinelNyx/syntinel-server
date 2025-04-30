@@ -1,4 +1,4 @@
--- name: GetAsset :one
+-- name: GetAssets :many
 SELECT * FROM assets
 WHERE root_account_id = $1;
 
