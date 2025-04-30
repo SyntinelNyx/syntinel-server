@@ -15,7 +15,7 @@ type Environment struct {
 	PrevEnvironment *string `json:"prevEnvId"`
 	NextEnvironment *string `json:"nextEnvId"`
 	Assets          []struct {
-		AssetID  string `json:"id"`
+		AssetID  string `json:"assetId"`
 		Hostname string `json:"hostname"`
 	} `json:"assets"`
 }
@@ -54,12 +54,12 @@ func (h *Handler) Retrieve(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var assets []struct {
-			AssetID  string `json:"id"`
+			AssetID  string `json:"assetId"`
 			Hostname string `json:"hostname"`
 		}
 		for _, asset := range assetsList {
 			assets = append(assets, struct {
-				AssetID  string `json:"id"`
+				AssetID  string `json:"assetId"`
 				Hostname string `json:"hostname"`
 			}{
 				AssetID:  response.UuidToString(asset.AssetID),

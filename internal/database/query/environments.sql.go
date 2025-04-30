@@ -132,41 +132,6 @@ func (q *Queries) GetEnvironmentList(ctx context.Context, rootAccountID pgtype.U
 	return items, nil
 }
 
-const getUnassignedAssets = `-- name: GetUnassignedAssets :many
-SELECT asset_id, ip_address, sysinfo_id, root_account_id, registered_at
-FROM assets
-WHERE root_account_id = $1
-  AND asset_id NOT IN (
-    SELECT asset_id FROM environment_assets
-  )
-`
-
-func (q *Queries) GetUnassignedAssets(ctx context.Context, rootAccountID pgtype.UUID) ([]Asset, error) {
-	rows, err := q.db.Query(ctx, getUnassignedAssets, rootAccountID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Asset
-	for rows.Next() {
-		var i Asset
-		if err := rows.Scan(
-			&i.AssetID,
-			&i.IpAddress,
-			&i.SysinfoID,
-			&i.RootAccountID,
-			&i.RegisteredAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const insertEnvironment = `-- name: InsertEnvironment :one
 INSERT INTO environments (
   environment_name, prev_env_id, next_env_id, root_account_id

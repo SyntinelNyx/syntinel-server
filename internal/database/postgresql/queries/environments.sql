@@ -65,11 +65,3 @@ JOIN assets a ON ea.asset_id = a.asset_id
 JOIN system_information s ON a.sysinfo_id = s.id
 WHERE ea.environment_id = $1;
 
--- name: GetUnassignedAssets :many
-SELECT *
-FROM assets
-WHERE root_account_id = $1
-  AND asset_id NOT IN (
-    SELECT asset_id FROM environment_assets
-  );
-

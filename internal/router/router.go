@@ -106,6 +106,7 @@ func SetupRouter(q *query.Queries, origins []string) *Router {
 
 			subRouter.Get("/env/retrieve", envHandler.Retrieve)
 			subRouter.Post("/env/create", envHandler.Create)
+			subRouter.Post("/env/add-asset", envHandler.AddAsset)
 
 			subRouter.Post("/role/retrieve", roleHandler.Retrieve)
 			subRouter.Post("/role/create", roleHandler.Create)
