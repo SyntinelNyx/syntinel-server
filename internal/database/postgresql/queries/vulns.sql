@@ -229,3 +229,42 @@ SELECT vulnerability_name,
     last_modified
 FROM vulnerability_data
 WHERE vulnerability_id = $1;
+
+-- name: RetrieveVulnTableByScan :many
+WITH root_account AS (
+    SELECT COALESCE(
+            (
+                SELECT root_account_id
+                FROM iam_accounts
+                WHERE account_id = $1
+                LIMIT 1
+            ), $1
+        ) AS id
+)
+SELECT vd.vulnerability_data_id AS id,
+    vd.vulnerability_id AS vulnerability,
+    vd.vulnerability_severity AS severity,
+    array_agg(DISTINCT si.hostname)::TEXT [] AS assets_affected,
+    array_agg(DISTINCT a.asset_id)::UUID [] AS asset_uuids,
+    MAX(avs.scan_date)::TIMESTAMPTZ AS "lastSeen"
+FROM asset_vulnerability_scan avs
+    JOIN vulnerability_data vd ON vd.vulnerability_data_id = avs.vulnerability_id
+    JOIN assets a ON a.asset_id = avs.asset_id
+    JOIN system_information si ON si.id = a.sysinfo_id
+WHERE avs.root_account_id = (
+        SELECT id
+        FROM root_account
+    )
+    AND avs.scan_id = $2
+GROUP BY vd.vulnerability_data_id,
+    vd.vulnerability_id,
+    vd.vulnerability_severity
+ORDER BY CASE
+        WHEN vd.vulnerability_severity = 'Critical' THEN 4
+        WHEN vd.vulnerability_severity = 'High' THEN 3
+        WHEN vd.vulnerability_severity = 'Medium' THEN 2
+        WHEN vd.vulnerability_severity = 'Low' THEN 1
+        WHEN vd.vulnerability_severity = 'Unknown' THEN 0
+        ELSE -1
+    END DESC,
+    vd.vulnerability_id;

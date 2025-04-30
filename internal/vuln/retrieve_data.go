@@ -1,16 +1,12 @@
 package vuln
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/SyntinelNyx/syntinel-server/internal/response"
+	"github.com/go-chi/chi/v5"
 )
-
-type RequestData struct {
-	VulnID string `json:"vulnID"`
-}
 
 type VulnerabilityData struct {
 	VulnerabilityName        string   `json:"vulnerabilityName"`
@@ -22,17 +18,11 @@ type VulnerabilityData struct {
 }
 
 func (h *Handler) RetrieveData(w http.ResponseWriter, r *http.Request) {
-	var requestData RequestData
-
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	vulnID := requestData.VulnID
+	vulnID := chi.URLParam(r, "vulnID")
 
 	if vulnID == "" {
 		http.Error(w, "Vulnerability ID is required", http.StatusBadRequest)
+
 		return
 	}
 
