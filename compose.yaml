@@ -21,18 +21,18 @@ services:
       - syntinel_data:/app/data/
     restart: always
 
-  redis:
-    container_name: redis
-    image: redis:latest
+  dragonfly:
+    image: 'docker.dragonflydb.io/dragonflydb/dragonfly'
+    ulimits:
+      memlock: -1
     ports:
-      - 6379:6379
+      - "6379:6379"
     volumes:
-      - redis_data:/data
-    restart: always
+      - dragonflydata:/data
 
   postgres:
-    container_name: postgres
-    image: postgres:latest
+    container_name: timescaledb 
+    image: timescale/timescaledb:latest-pg17
     environment:
       POSTGRES_USER: ${POSTGRESQL_USER}
       POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD}
@@ -45,5 +45,6 @@ services:
 
 volumes:
   syntinel_data:
-  redis_data:
+  dragonflydata:
   postgres_data:
+
