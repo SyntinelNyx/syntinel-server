@@ -21,12 +21,14 @@ services:
       - syntinel_data:/app/data/
     restart: always
 
-  dragonfly:
-    image: 'docker.dragonflydb.io/dragonflydb/dragonfly'
+  redis:
+    container_name: redis
+    image: redis:latest
     ports:
-      - "6379:6379"
+      - 6379:6379
     volumes:
-      - dragonflydata:/data
+      - redis_data:/data
+    restart: always
 
   postgres:
     container_name: timescaledb 
@@ -43,6 +45,6 @@ services:
 
 volumes:
   syntinel_data:
-  dragonflydata:
+  redis_data:
   postgres_data:
 
